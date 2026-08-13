@@ -3,6 +3,7 @@ import { createAnthropicClient } from "@/lib/anthropic/client";
 
 export type QuestionType = "mcq_single" | "numerical";
 export type Difficulty = "easy" | "medium" | "hard";
+export type DifficultyCounts = Record<Difficulty, number>;
 
 export type GeneratedQuestion = {
   type: QuestionType;
@@ -62,14 +63,23 @@ const QUESTIONS_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+function describeCounts(counts: DifficultyCounts): string {
+  return (Object.entries(counts) as [Difficulty, number][])
+    .filter(([, n]) => n > 0)
+    .map(([level, n]) => `${n} ${level}`)
+    .join(", ");
+}
+
 export async function generateQuestions(params: {
   subjectName: string;
   topicName: string;
   classLevel: 11 | 12;
-  difficulty: Difficulty;
-  count: number;
+  difficultyCounts: DifficultyCounts;
 }): Promise<GeneratedQuestion[]> {
-  const { subjectName, topicName, classLevel, difficulty, count } = params;
+  const { subjectName, topicName, classLevel, difficultyCounts } = params;
+  const total = Object.values(difficultyCounts).reduce((a, b) => a + b, 0);
+  if (total === 0) return [];
+
   const client = createAnthropicClient();
 
   const response = await client.messages.create({
@@ -84,10 +94,10 @@ export async function generateQuestions(params: {
       {
         role: "user",
         content:
-          `Generate ${count} JEE Main-style questions for:\n` +
+          `Generate exactly ${total} JEE Main-style questions for:\n` +
           `Subject: ${subjectName}\n` +
           `Topic: ${topicName} (Class ${classLevel} NCERT syllabus)\n` +
-          `Difficulty: ${difficulty}\n\n` +
+          `Difficulty breakdown (follow this exactly): ${describeCounts(difficultyCounts)}\n\n` +
           `Mix question types (mcq_single and numerical) across the set where it makes sense for this topic. ` +
           `Do not repeat the same question idea twice.`,
       },

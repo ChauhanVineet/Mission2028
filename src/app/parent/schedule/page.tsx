@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/LogoutButton";
-import { TopicPicker } from "@/components/TopicPicker";
+import { TestScheduler } from "@/components/TestScheduler";
+
+// Question generation can take up to ~40s per topic; give the Server Action
+// route enough headroom to avoid a platform timeout on larger tests.
+export const maxDuration = 60;
 
 type TopicRow = {
   id: string;
@@ -70,7 +74,7 @@ export default async function ScheduleTestPage() {
           <LogoutButton />
         </header>
 
-        <TopicPicker subjects={subjects} />
+        <TestScheduler subjects={subjects} />
       </div>
     </div>
   );
