@@ -14,16 +14,20 @@ export function CancelTestButton({ testId }: { testId: string }) {
   async function handleConfirm() {
     setLoading(true);
     setError(null);
-    const res = await cancelTest(testId);
-    setLoading(false);
 
-    if (!res.success) {
-      setError(res.error);
-      return;
+    try {
+      const res = await cancelTest(testId);
+      if (!res.success) {
+        setError(res.error);
+        return;
+      }
+      setConfirming(false);
+      router.refresh();
+    } catch {
+      setError("Something went wrong cancelling the test. Try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setConfirming(false);
-    router.refresh();
   }
 
   return (

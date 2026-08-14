@@ -8,6 +8,7 @@ import {
   allocateQuestionTypes,
   type DifficultyMix,
 } from "@/lib/questions/distribute";
+import { friendlyErrorMessage } from "@/lib/errors";
 
 // JEE Main's fixed per-subject pattern: 25 questions (20 MCQ + 5 Numerical)
 // in a 60-minute block (the real exam's 180 minutes ÷ 3 subjects). Not
@@ -52,7 +53,26 @@ function shuffle<T>(items: T[]): T[] {
   return arr;
 }
 
-export async function scheduleTest(input: {
+// Top-level safety net: anything unexpected that escapes the specific
+// error handling below (a bug, a provider outage we didn't anticipate, a
+// dropped connection) still resolves to a clean, friendly result instead
+// of throwing — an uncaught rejection here would otherwise reach the
+// client with no error handling of its own around this call, and fail
+// completely silently (spinner stops, nothing else happens).
+export async function scheduleTest(
+  input: Parameters<typeof scheduleTestInner>[0],
+): Promise<ScheduleTestResult> {
+  try {
+    return await scheduleTestInner(input);
+  } catch (err) {
+    return {
+      success: false,
+      error: friendlyErrorMessage(err, "Something went wrong scheduling the test. Try again."),
+    };
+  }
+}
+
+async function scheduleTestInner(input: {
   topicIds: string[];
   difficultyMix: DifficultyMix;
   deadline: string; // "YYYY-MM-DD"
@@ -153,14 +173,12 @@ export async function scheduleTest(input: {
       })),
     );
   } catch (err) {
-    const isTimeout =
-      err instanceof Error &&
-      /timeout|timed out/i.test(err.message);
     return {
       success: false,
-      error: isTimeout
-        ? "Question generation timed out. This can happen with a lot of topics selected at once — try again, or select fewer topics."
-        : "Question generation failed. Check your ANTHROPIC_API_KEY and try again.",
+      error: friendlyErrorMessage(
+        err,
+        "Question generation failed. Check your ANTHROPIC_API_KEY and try again.",
+      ),
     };
   }
 

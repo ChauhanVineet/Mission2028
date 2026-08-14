@@ -19,21 +19,32 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: ROLE_EMAILS[role],
-      password,
-    });
+    try {
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: ROLE_EMAILS[role],
+        password,
+      });
 
-    setLoading(false);
+      if (signInError) {
+        // Distinguish "wrong password" from anything else (network down,
+        // auth service unreachable) so the user isn't told their password
+        // is wrong when it isn't.
+        setError(
+          /invalid login credentials/i.test(signInError.message)
+            ? "Incorrect password. Try again."
+            : "Couldn't sign in right now. Check your connection and try again.",
+        );
+        return;
+      }
 
-    if (signInError) {
-      setError("Incorrect password. Try again.");
-      return;
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("Couldn't sign in right now. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    router.push("/");
-    router.refresh();
   }
 
   return (

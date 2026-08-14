@@ -102,18 +102,22 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
     setError(null);
     setResult(null);
 
-    const res = await scheduleTest({
-      topicIds: selectedTopicIds,
-      difficultyMix,
-      deadline,
-    });
+    try {
+      const res = await scheduleTest({
+        topicIds: selectedTopicIds,
+        difficultyMix,
+        deadline,
+      });
 
-    setScheduling(false);
-
-    if (res.success) {
-      setResult(res.test);
-    } else {
-      setError(res.error);
+      if (res.success) {
+        setResult(res.test);
+      } else {
+        setError(res.error);
+      }
+    } catch {
+      setError("Something went wrong scheduling the test. Try again.");
+    } finally {
+      setScheduling(false);
     }
   }
 

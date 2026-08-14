@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/LogoutButton";
 import { TestScheduler } from "@/components/TestScheduler";
 import { PageNav } from "@/components/PageNav";
+import { LoadErrorBanner } from "@/components/LoadErrorBanner";
 
 // A full 25-question subject batch measures ~76s against the real API
 // (up to 3 subjects run in parallel, so this bounds worst-case wall time,
@@ -41,7 +42,7 @@ export default async function ScheduleTestPage() {
 
   if (profile?.role !== "parent") redirect("/");
 
-  const [{ data: subjectRows }, { data: topicRows }] = await Promise.all([
+  const [{ data: subjectRows, error: subjectsError }, { data: topicRows, error: topicsError }] = await Promise.all([
     supabase
       .from("subjects")
       .select("id, name, display_order")
@@ -82,7 +83,13 @@ export default async function ScheduleTestPage() {
           <LogoutButton />
         </header>
 
-        <TestScheduler subjects={subjects} />
+        {subjectsError || topicsError ? (
+          <LoadErrorBanner what="the JEE syllabus" />
+        ) : subjects.length === 0 ? (
+          <LoadErrorBanner what="the JEE syllabus" />
+        ) : (
+          <TestScheduler subjects={subjects} />
+        )}
       </div>
     </div>
   );

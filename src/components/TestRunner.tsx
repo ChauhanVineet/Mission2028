@@ -54,6 +54,7 @@ export function TestRunner({
   );
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<SubmitResult | null>(null);
 
   const timeSpent = useRef<Record<string, number>>({});
@@ -72,6 +73,7 @@ export function TestRunner({
     if (submitting) return;
     recordTimeOnCurrent();
     setSubmitting(true);
+    setSubmitError(null);
 
     const payload: SubmitAnswer[] = questions.map((q) => ({
       questionId: q.id,
@@ -79,13 +81,17 @@ export function TestRunner({
       timeSpentSeconds: timeSpent.current[q.id] ?? 0,
     }));
 
-    const res = await submitAttempt(attemptId, payload);
-
-    setSubmitting(false);
-    if (res.success) {
-      setResult(res);
-    } else {
-      alert(res.error);
+    try {
+      const res = await submitAttempt(attemptId, payload);
+      if (res.success) {
+        setResult(res);
+      } else {
+        setSubmitError(res.error);
+      }
+    } catch {
+      setSubmitError("Something went wrong submitting the test. Try again.");
+    } finally {
+      setSubmitting(false);
     }
   }, [answers, attemptId, questions, recordTimeOnCurrent, submitting]);
 
@@ -326,6 +332,7 @@ export function TestRunner({
           answeredCount={Object.values(answers).filter(Boolean).length}
           totalCount={questions.length}
           submitting={submitting}
+          error={submitError}
           onCancel={() => setShowSubmitConfirm(false)}
           onConfirm={handleSubmit}
         />
@@ -335,6 +342,12 @@ export function TestRunner({
         <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black/40">
           <Spinner className="h-8 w-8 text-white" />
           <p className="text-sm font-medium text-white">Submitting your test…</p>
+        </div>
+      )}
+
+      {submitError && !showSubmitConfirm && !submitting && (
+        <div className="fixed inset-x-0 bottom-4 z-50 mx-auto w-full max-w-sm animate-fade-in-up rounded-xl bg-red-50 p-4 text-center text-sm text-red-700 shadow-lg">
+          {submitError}
         </div>
       )}
     </div>
@@ -354,12 +367,14 @@ function SubmitConfirmDialog({
   answeredCount,
   totalCount,
   submitting,
+  error,
   onCancel,
   onConfirm,
 }: {
   answeredCount: number;
   totalCount: number;
   submitting: boolean;
+  error: string | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -373,6 +388,9 @@ function SubmitConfirmDialog({
           You&apos;ve answered {answeredCount} of {totalCount} questions.
           Once submitted, you can&apos;t change your answers.
         </p>
+        {error && (
+          <p className="mb-4 animate-fade-in-up text-sm text-red-600">{error}</p>
+        )}
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}

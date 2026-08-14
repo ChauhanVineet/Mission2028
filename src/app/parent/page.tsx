@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/LogoutButton";
 import { PageNav } from "@/components/PageNav";
 import { CancelTestButton } from "@/components/CancelTestButton";
+import { LoadErrorBanner } from "@/components/LoadErrorBanner";
 
 type TestRow = {
   id: string;
@@ -51,7 +52,7 @@ export default async function ParentDashboard() {
 
   if (profile?.role !== "parent") redirect("/");
 
-  const { data: tests } = await supabase
+  const { data: tests, error: testsError } = await supabase
     .from("tests")
     .select("id, title, deadline, duration_minutes, question_count, status")
     .eq("created_by", user.id)
@@ -97,6 +98,8 @@ export default async function ParentDashboard() {
             </Link>
           </div>
         </div>
+
+        {testsError && <LoadErrorBanner what="your scheduled tests" />}
 
         {tests && tests.length > 0 && (
           <div

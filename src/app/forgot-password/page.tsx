@@ -28,21 +28,29 @@ export default function ForgotPasswordPage() {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: sendError } = await supabase.auth.resetPasswordForEmail(
-      ROLE_EMAILS[selectedRole],
-    );
+    try {
+      const supabase = createClient();
+      const { error: sendError } = await supabase.auth.resetPasswordForEmail(
+        ROLE_EMAILS[selectedRole],
+      );
 
-    setLoading(false);
+      if (sendError) {
+        setError(
+          /rate limit|too many/i.test(sendError.message)
+            ? "Too many reset requests. Wait a few minutes and try again."
+            : "Couldn't send a reset code. Try again in a bit.",
+        );
+        return;
+      }
 
-    if (sendError) {
-      setError("Couldn't send a reset code. Try again in a bit.");
-      return;
+      setRole(selectedRole);
+      setStep("code");
+      setInfo(`Code sent to ${maskEmail(ROLE_EMAILS[selectedRole])}`);
+    } catch {
+      setError("Couldn't send a reset code. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
-
-    setRole(selectedRole);
-    setStep("code");
-    setInfo(`Code sent to ${maskEmail(ROLE_EMAILS[selectedRole])}`);
   }
 
   async function handleResend() {
@@ -64,33 +72,37 @@ export default function ForgotPasswordPage() {
     }
 
     setLoading(true);
-    const supabase = createClient();
 
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: ROLE_EMAILS[role],
-      token: code,
-      type: "recovery",
-    });
+    try {
+      const supabase = createClient();
 
-    if (verifyError) {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: ROLE_EMAILS[role],
+        token: code,
+        type: "recovery",
+      });
+
+      if (verifyError) {
+        setError("That code is invalid or expired. Request a new one.");
+        return;
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
+      });
+
+      if (updateError) {
+        setError("Couldn't set the new password. Try again.");
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("Something went wrong resetting your password. Try again.");
+    } finally {
       setLoading(false);
-      setError("That code is invalid or expired. Request a new one.");
-      return;
     }
-
-    const { error: updateError } = await supabase.auth.updateUser({
-      password,
-    });
-
-    setLoading(false);
-
-    if (updateError) {
-      setError("Couldn't set the new password. Try again.");
-      return;
-    }
-
-    router.push("/");
-    router.refresh();
   }
 
   return (

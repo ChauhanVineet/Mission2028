@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { gradeAnswer, maxMarksForCount } from "@/lib/tests/grading";
 import type { QuestionType } from "@/lib/questions/generate";
+import { friendlyErrorMessage } from "@/lib/errors";
 
 async function requireAkul() {
   const supabase = await createClient();
@@ -22,6 +23,22 @@ async function requireAkul() {
 }
 
 export async function startAttempt(
+  testId: string,
+): Promise<
+  | { success: true; attemptId: string; startedAt: string }
+  | { success: false; error: string }
+> {
+  try {
+    return await startAttemptInner(testId);
+  } catch (err) {
+    return {
+      success: false,
+      error: friendlyErrorMessage(err, "Something went wrong starting the test. Try again."),
+    };
+  }
+}
+
+async function startAttemptInner(
   testId: string,
 ): Promise<
   | { success: true; attemptId: string; startedAt: string }
@@ -77,6 +94,30 @@ export type SubmitAnswer = {
 };
 
 export async function submitAttempt(
+  attemptId: string,
+  answers: SubmitAnswer[],
+): Promise<
+  | {
+      success: true;
+      score: number;
+      totalMarks: number;
+      correctCount: number;
+      incorrectCount: number;
+      skippedCount: number;
+    }
+  | { success: false; error: string }
+> {
+  try {
+    return await submitAttemptInner(attemptId, answers);
+  } catch (err) {
+    return {
+      success: false,
+      error: friendlyErrorMessage(err, "Something went wrong submitting the test. Try again."),
+    };
+  }
+}
+
+async function submitAttemptInner(
   attemptId: string,
   answers: SubmitAnswer[],
 ): Promise<

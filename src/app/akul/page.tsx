@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/LogoutButton";
 import { TestHistoryList, type PastTest } from "@/components/TestHistoryList";
 import { PageNav } from "@/components/PageNav";
+import { LoadErrorBanner } from "@/components/LoadErrorBanner";
 
 type TestRow = {
   id: string;
@@ -51,7 +52,7 @@ export default async function AkulDashboard() {
 
   if (profile?.role !== "akul") redirect("/");
 
-  const [{ data: tests }, { data: pastAttempts }] = await Promise.all([
+  const [{ data: tests, error: testsError }, { data: pastAttempts }] = await Promise.all([
     supabase
       .from("tests")
       .select("id, title, deadline, duration_minutes, question_count, status")
@@ -97,6 +98,8 @@ export default async function AkulDashboard() {
         </header>
 
         <div className="space-y-6">
+          {testsError && <LoadErrorBanner what="your tests" />}
+
           {!tests || tests.length === 0 ? (
             <div
               className="animate-fade-in-up rounded-2xl bg-white p-6 text-center shadow-sm"

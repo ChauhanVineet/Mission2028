@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { friendlyErrorMessage } from "@/lib/errors";
 
 export type CancelTestResult = { success: true } | { success: false; error: string };
 
@@ -8,6 +9,17 @@ export type CancelTestResult = { success: true } | { success: false; error: stri
 // (status flips to "in_progress" on first attempt), it can no longer be
 // cancelled from here.
 export async function cancelTest(testId: string): Promise<CancelTestResult> {
+  try {
+    return await cancelTestInner(testId);
+  } catch (err) {
+    return {
+      success: false,
+      error: friendlyErrorMessage(err, "Something went wrong cancelling the test. Try again."),
+    };
+  }
+}
+
+async function cancelTestInner(testId: string): Promise<CancelTestResult> {
   const supabase = await createClient();
 
   const {
