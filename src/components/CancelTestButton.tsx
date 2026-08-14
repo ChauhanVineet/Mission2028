@@ -59,8 +59,9 @@ export function CancelTestButton({ testId }: { testId: string }) {
               Cancel this test?
             </h2>
             <p className="mb-6 text-sm text-slate-500">
-              This removes it from Akul&apos;s dashboard and deletes the
-              generated questions. This can&apos;t be undone.
+              This removes it from Akul&apos;s dashboard. This can&apos;t be
+              undone, but the generated questions stay saved for future
+              tests.
             </p>
 
             {error && <p className="mb-4 text-sm text-red-600">{error}</p>}

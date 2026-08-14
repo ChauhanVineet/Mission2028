@@ -43,13 +43,10 @@ export async function cancelTest(testId: string): Promise<CancelTestResult> {
     };
   }
 
-  const { data: linkedQuestions } = await supabase
-    .from("test_questions")
-    .select("question_id")
-    .eq("test_id", testId);
-
   // Re-check status atomically in the delete itself, in case Akul started
   // the test in the moment between the check above and this statement.
+  // Only the test row (and its test_questions links) is removed — the
+  // generated questions themselves stay in the bank for future reuse.
   const { data: deletedTest, error: deleteTestError } = await supabase
     .from("tests")
     .delete()
@@ -66,11 +63,6 @@ export async function cancelTest(testId: string): Promise<CancelTestResult> {
       success: false,
       error: "This test can no longer be cancelled — Akul has already started it.",
     };
-  }
-
-  const questionIds = (linkedQuestions ?? []).map((q) => q.question_id);
-  if (questionIds.length > 0) {
-    await supabase.from("questions").delete().in("id", questionIds);
   }
 
   return { success: true };
