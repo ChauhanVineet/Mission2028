@@ -9,7 +9,6 @@ export type TopicRequest = {
   topicName: string;
   classLevel: 11 | 12;
   difficultyCounts: DifficultyCounts;
-  typeCounts: Record<QuestionType, number>;
 };
 
 export type GeneratedQuestion = {
@@ -90,7 +89,6 @@ function describeTopics(topics: TopicRequest[]): string {
       const total = Object.values(t.difficultyCounts).reduce((a, b) => a + b, 0);
       return (
         `Topic ${i} — "${t.topicName}" (Class ${t.classLevel} NCERT syllabus): ${total} questions. ` +
-        `Type breakdown: ${t.typeCounts.mcq_single} mcq_single, ${t.typeCounts.numerical} numerical. ` +
         `Difficulty breakdown: ${describeCounts(t.difficultyCounts)}.`
       );
     })
@@ -103,11 +101,18 @@ function describeTopics(topics: TopicRequest[]): string {
 // parallel (via Promise.all, one per topic) can blow through Anthropic's
 // concurrency/rate limits — the resulting retries/backoff are what turned a
 // "should take under a minute" generation into a 15-minute hang.
+//
+// The mcq_single/numerical split is enforced once for the whole subject
+// total, not per topic: splitting it per topic first (when a subject's 25
+// questions are spread across 20+ topics) rounds almost every topic down to
+// "1 question, 100% mcq_single", so the aggregate result skewed to nearly
+// all MCQ with ~0 numerical despite requesting an 80/20 split.
 export async function generateQuestions(params: {
   subjectName: string;
   topics: TopicRequest[];
+  typeCounts: Record<QuestionType, number>;
 }): Promise<GeneratedQuestion[]> {
-  const { subjectName, topics } = params;
+  const { subjectName, topics, typeCounts } = params;
   const grandTotal = topics.reduce(
     (sum, t) => sum + Object.values(t.difficultyCounts).reduce((a, b) => a + b, 0),
     0,
@@ -138,7 +143,10 @@ export async function generateQuestions(params: {
           `Generate exactly ${grandTotal} JEE Main-style questions total for ${subjectName}, covering these topics ` +
           `(follow every count exactly — this is a strict JEE Main format requirement):\n\n` +
           describeTopics(topics) +
-          `\n\nTag every question with the topic_index it belongs to, exactly matching the numbers above. ` +
+          `\n\nQuestion type breakdown across the ENTIRE set (follow this exactly — this is a strict JEE Main format ` +
+          `requirement): ${typeCounts.mcq_single} mcq_single, ${typeCounts.numerical} numerical, distributed across ` +
+          `the topics above however makes sense (a single topic can be all one type). ` +
+          `Tag every question with the topic_index it belongs to, exactly matching the numbers above. ` +
           `Distribute difficulty levels across both question types as makes sense pedagogically. ` +
           `Do not repeat the same question idea twice, including across different topics.`,
       },

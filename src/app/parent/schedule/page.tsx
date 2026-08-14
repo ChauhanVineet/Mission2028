@@ -4,9 +4,11 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { TestScheduler } from "@/components/TestScheduler";
 import { PageNav } from "@/components/PageNav";
 
-// Question generation can take up to ~40s per topic; give the Server Action
-// route enough headroom to avoid a platform timeout on larger tests.
-export const maxDuration = 60;
+// A full 25-question subject batch measures ~76s against the real API
+// (up to 3 subjects run in parallel, so this bounds worst-case wall time,
+// not the sum). Give the Server Action route enough headroom to avoid a
+// platform timeout; keep in sync with the Anthropic client timeout.
+export const maxDuration = 120;
 
 type TopicRow = {
   id: string;

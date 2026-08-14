@@ -333,7 +333,7 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
             </button>
             {scheduling && (
               <p className="mt-2 text-center text-[11px] text-slate-400">
-                This can take up to a minute for larger tests.
+                This can take up to 1-2 minutes.
               </p>
             )}
           </div>

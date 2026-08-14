@@ -130,14 +130,17 @@ export async function scheduleTest(input: {
     const perSubjectResults = await Promise.all(
       activeTopicsBySubject.map(async (activeTopics) => {
         const subjectName = activeTopics[0].topic.subjects?.name ?? "Unknown";
+        const subjectTotal = activeTopics.reduce((sum, { count }) => sum + count, 0);
         const questions = await generateQuestions({
           subjectName,
           topics: activeTopics.map(({ topic, count }) => ({
             topicName: topic.name,
             classLevel: topic.class_level,
             difficultyCounts: allocateDifficulty(count, difficultyMix),
-            typeCounts: allocateQuestionTypes(count),
           })),
+          // Split once for the whole subject (always 25 -> 20/5), not per
+          // topic — see the comment on generateQuestions for why.
+          typeCounts: allocateQuestionTypes(subjectTotal),
         });
         return { activeTopics, questions };
       }),
