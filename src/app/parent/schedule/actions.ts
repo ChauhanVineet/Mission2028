@@ -9,9 +9,12 @@ import {
   type DifficultyMix,
 } from "@/lib/questions/distribute";
 
-const MIN_QUESTIONS = 4;
-const MAX_QUESTIONS = 20;
-const MINUTES_PER_QUESTION = 3;
+// JEE Main's fixed per-subject pattern: 25 questions (20 MCQ + 5 Numerical)
+// in a 60-minute block (the real exam's 180 minutes ÷ 3 subjects). Not
+// user-configurable — every subject with at least one selected topic gets
+// exactly this, regardless of how many topics within it are picked.
+const QUESTIONS_PER_SUBJECT = 25;
+const MINUTES_PER_SUBJECT = 60;
 
 export type ScheduledQuestion = GeneratedQuestion & {
   subjectName: string;
@@ -51,7 +54,6 @@ function shuffle<T>(items: T[]): T[] {
 
 export async function scheduleTest(input: {
   topicIds: string[];
-  questionCount: number;
   difficultyMix: DifficultyMix;
   deadline: string; // "YYYY-MM-DD"
 }): Promise<ScheduleTestResult> {
@@ -74,10 +76,6 @@ export async function scheduleTest(input: {
   }
 
   const { topicIds, difficultyMix, deadline } = input;
-  const questionCount = Math.min(
-    MAX_QUESTIONS,
-    Math.max(MIN_QUESTIONS, Math.round(input.questionCount)),
-  );
 
   if (topicIds.length === 0) {
     return { success: false, error: "Select at least one topic first." };
@@ -98,9 +96,21 @@ export async function scheduleTest(input: {
     return { success: false, error: "Could not load selected topics." };
   }
 
-  const perTopicCounts = allocateAcrossTopics(questionCount, topics.length);
+  const topicsBySubject = new Map<string, TopicRow[]>();
+  for (const topic of topics) {
+    const list = topicsBySubject.get(topic.subject_id) ?? [];
+    list.push(topic);
+    topicsBySubject.set(topic.subject_id, list);
+  }
+
+  const perTopicCount = new Map<string, number>();
+  for (const subjectTopics of topicsBySubject.values()) {
+    const counts = allocateAcrossTopics(QUESTIONS_PER_SUBJECT, subjectTopics.length);
+    subjectTopics.forEach((topic, i) => perTopicCount.set(topic.id, counts[i]));
+  }
+
   const activeTopics = topics
-    .map((topic, i) => ({ topic, count: perTopicCounts[i] }))
+    .map((topic) => ({ topic, count: perTopicCount.get(topic.id) ?? 0 }))
     .filter(({ count }) => count > 0);
 
   let generatedBatches: {
@@ -174,7 +184,7 @@ export async function scheduleTest(input: {
         }`
       : `${subjectNames.join(" + ")} Test`;
 
-  const durationMinutes = questionCount * MINUTES_PER_QUESTION;
+  const durationMinutes = topicsBySubject.size * MINUTES_PER_SUBJECT;
 
   const { data: test, error: testError } = await supabase
     .from("tests")

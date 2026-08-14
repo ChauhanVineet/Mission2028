@@ -47,11 +47,13 @@ function defaultDeadline() {
   return d.toISOString().slice(0, 10);
 }
 
+const QUESTIONS_PER_SUBJECT = 25;
+const MINUTES_PER_SUBJECT = 60;
+
 export function TestScheduler({ subjects }: { subjects: Subject[] }) {
   const [activeSubjectId, setActiveSubjectId] = useState(subjects[0]?.id);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [difficultyMix, setDifficultyMix] = useState<DifficultyMix>("balanced");
-  const [questionCount, setQuestionCount] = useState(10);
   const [deadline, setDeadline] = useState(defaultDeadline);
 
   const [scheduling, setScheduling] = useState(false);
@@ -73,6 +75,11 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
   );
 
   const totalSelected = selectedTopicIds.length;
+  const selectedSubjectCount = selectedBySubject.filter(
+    (group) => group.topics.length > 0,
+  ).length;
+  const previewQuestionCount = selectedSubjectCount * QUESTIONS_PER_SUBJECT;
+  const previewDurationMinutes = selectedSubjectCount * MINUTES_PER_SUBJECT;
 
   function toggleTopic(id: string) {
     setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -97,7 +104,6 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
 
     const res = await scheduleTest({
       topicIds: selectedTopicIds,
-      questionCount,
       difficultyMix,
       deadline,
     });
@@ -281,25 +287,21 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
               </div>
             </div>
 
-            <div>
-              <label
-                htmlFor="questionCount"
-                className="mb-1.5 block text-xs font-semibold text-slate-700"
-              >
-                Number of questions: {questionCount}
-              </label>
-              <input
-                id="questionCount"
-                type="range"
-                min={4}
-                max={20}
-                value={questionCount}
-                onChange={(e) => setQuestionCount(Number(e.target.value))}
-                className="w-full accent-purple-600"
-              />
-              <p className="mt-1 text-[11px] text-slate-400">
-                ≈ {questionCount * 3} minute test
+            <div className="rounded-xl bg-indigo-50 p-3">
+              <p className="text-xs font-semibold text-indigo-700">
+                📋 Fixed JEE Main format
               </p>
+              <p className="mt-0.5 text-[11px] text-indigo-600">
+                25 questions per subject (20 MCQ + 5 Numerical), 60 minutes
+                per subject.
+              </p>
+              {selectedSubjectCount > 0 && (
+                <p className="mt-1.5 text-[11px] font-semibold text-indigo-700">
+                  This test: {previewQuestionCount} questions ·{" "}
+                  {previewDurationMinutes} min · {selectedSubjectCount} subject
+                  {selectedSubjectCount === 1 ? "" : "s"}
+                </p>
+              )}
             </div>
 
             <div>
