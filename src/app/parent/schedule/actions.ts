@@ -16,7 +16,7 @@ import {
 const QUESTIONS_PER_SUBJECT = 25;
 const MINUTES_PER_SUBJECT = 60;
 
-export type ScheduledQuestion = GeneratedQuestion & {
+export type ScheduledQuestion = Omit<GeneratedQuestion, "topicIndex"> & {
   subjectName: string;
   topicName: string;
 };
@@ -109,26 +109,44 @@ export async function scheduleTest(input: {
     subjectTopics.forEach((topic, i) => perTopicCount.set(topic.id, counts[i]));
   }
 
-  const activeTopics = topics
-    .map((topic) => ({ topic, count: perTopicCount.get(topic.id) ?? 0 }))
-    .filter(({ count }) => count > 0);
+  const activeTopicsBySubject = [...topicsBySubject.values()]
+    .map((subjectTopics) =>
+      subjectTopics
+        .map((topic) => ({ topic, count: perTopicCount.get(topic.id) ?? 0 }))
+        .filter(({ count }) => count > 0),
+    )
+    .filter((activeTopics) => activeTopics.length > 0);
 
+  // One Claude call per subject (not per topic) — a subject can have 20-30
+  // topics, and firing that many parallel requests can blow through
+  // Anthropic's rate limits, turning a sub-minute generation into a
+  // multi-minute hang from retries/backoff.
   let generatedBatches: {
     topic: TopicRow;
     questions: GeneratedQuestion[];
   }[];
 
   try {
-    generatedBatches = await Promise.all(
-      activeTopics.map(async ({ topic, count }) => ({
+    const perSubjectResults = await Promise.all(
+      activeTopicsBySubject.map(async (activeTopics) => {
+        const subjectName = activeTopics[0].topic.subjects?.name ?? "Unknown";
+        const questions = await generateQuestions({
+          subjectName,
+          topics: activeTopics.map(({ topic, count }) => ({
+            topicName: topic.name,
+            classLevel: topic.class_level,
+            difficultyCounts: allocateDifficulty(count, difficultyMix),
+            typeCounts: allocateQuestionTypes(count),
+          })),
+        });
+        return { activeTopics, questions };
+      }),
+    );
+
+    generatedBatches = perSubjectResults.flatMap(({ activeTopics, questions }) =>
+      activeTopics.map(({ topic }, topicIndex) => ({
         topic,
-        questions: await generateQuestions({
-          subjectName: topic.subjects?.name ?? "Unknown",
-          topicName: topic.name,
-          classLevel: topic.class_level,
-          difficultyCounts: allocateDifficulty(count, difficultyMix),
-          typeCounts: allocateQuestionTypes(count),
-        }),
+        questions: questions.filter((q) => q.topicIndex === topicIndex),
       })),
     );
   } catch {

@@ -8,5 +8,9 @@ export function createAnthropicClient() {
       "ANTHROPIC_API_KEY is not set. Add it to your environment to generate questions.",
     );
   }
-  return new Anthropic({ apiKey });
+  // Fail fast instead of the SDK's default multi-retry behavior, which can
+  // silently stretch a single stuck/rate-limited request across several
+  // minutes-long attempts — worse than just erroring so the parent can
+  // retry from the UI.
+  return new Anthropic({ apiKey, timeout: 55_000, maxRetries: 0 });
 }

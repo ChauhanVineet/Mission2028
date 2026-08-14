@@ -5,7 +5,15 @@ export type QuestionType = "mcq_single" | "numerical";
 export type Difficulty = "easy" | "medium" | "hard";
 export type DifficultyCounts = Record<Difficulty, number>;
 
+export type TopicRequest = {
+  topicName: string;
+  classLevel: 11 | 12;
+  difficultyCounts: DifficultyCounts;
+  typeCounts: Record<QuestionType, number>;
+};
+
 export type GeneratedQuestion = {
+  topicIndex: number;
   type: QuestionType;
   question_text: string;
   options: string[];
@@ -22,6 +30,11 @@ const QUESTIONS_SCHEMA = {
       items: {
         type: "object",
         properties: {
+          topic_index: {
+            type: "integer",
+            description:
+              "0-based index into the requested topic list (see the numbered topic breakdown in the prompt) that this question belongs to.",
+          },
           type: {
             type: "string",
             enum: ["mcq_single", "numerical"],
@@ -48,6 +61,7 @@ const QUESTIONS_SCHEMA = {
           difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
         },
         required: [
+          "topic_index",
           "type",
           "question_text",
           "options",
@@ -70,22 +84,41 @@ function describeCounts(counts: DifficultyCounts): string {
     .join(", ");
 }
 
+function describeTopics(topics: TopicRequest[]): string {
+  return topics
+    .map((t, i) => {
+      const total = Object.values(t.difficultyCounts).reduce((a, b) => a + b, 0);
+      return (
+        `Topic ${i} — "${t.topicName}" (Class ${t.classLevel} NCERT syllabus): ${total} questions. ` +
+        `Type breakdown: ${t.typeCounts.mcq_single} mcq_single, ${t.typeCounts.numerical} numerical. ` +
+        `Difficulty breakdown: ${describeCounts(t.difficultyCounts)}.`
+      );
+    })
+    .join("\n");
+}
+
+// One call generates every question for an entire subject (across all of
+// its selected topics) in a single request, instead of one call per topic.
+// A subject can have 20-30 topics, and firing that many questions calls in
+// parallel (via Promise.all, one per topic) can blow through Anthropic's
+// concurrency/rate limits — the resulting retries/backoff are what turned a
+// "should take under a minute" generation into a 15-minute hang.
 export async function generateQuestions(params: {
   subjectName: string;
-  topicName: string;
-  classLevel: 11 | 12;
-  difficultyCounts: DifficultyCounts;
-  typeCounts: Record<QuestionType, number>;
+  topics: TopicRequest[];
 }): Promise<GeneratedQuestion[]> {
-  const { subjectName, topicName, classLevel, difficultyCounts, typeCounts } = params;
-  const total = Object.values(difficultyCounts).reduce((a, b) => a + b, 0);
-  if (total === 0) return [];
+  const { subjectName, topics } = params;
+  const grandTotal = topics.reduce(
+    (sum, t) => sum + Object.values(t.difficultyCounts).reduce((a, b) => a + b, 0),
+    0,
+  );
+  if (grandTotal === 0) return [];
 
   const client = createAnthropicClient();
 
   const response = await client.messages.create({
     model: "claude-opus-5",
-    max_tokens: 8000,
+    max_tokens: 16000,
     system:
       "You are an expert JEE (Joint Entrance Examination) question setter for Indian Class 11-12 students preparing for JEE Main. " +
       "You write original, exam-quality questions that strictly match the JEE Main pattern: single-correct MCQs (4 options) and " +
@@ -102,14 +135,12 @@ export async function generateQuestions(params: {
       {
         role: "user",
         content:
-          `Generate exactly ${total} JEE Main-style questions for:\n` +
-          `Subject: ${subjectName}\n` +
-          `Topic: ${topicName} (Class ${classLevel} NCERT syllabus)\n` +
-          `Question type breakdown (follow this exactly — this is a strict JEE Main format requirement): ` +
-          `${typeCounts.mcq_single} mcq_single, ${typeCounts.numerical} numerical.\n` +
-          `Difficulty breakdown (follow this exactly): ${describeCounts(difficultyCounts)}\n\n` +
-          `Distribute the difficulty levels across both question types as makes sense pedagogically. ` +
-          `Do not repeat the same question idea twice.`,
+          `Generate exactly ${grandTotal} JEE Main-style questions total for ${subjectName}, covering these topics ` +
+          `(follow every count exactly — this is a strict JEE Main format requirement):\n\n` +
+          describeTopics(topics) +
+          `\n\nTag every question with the topic_index it belongs to, exactly matching the numbers above. ` +
+          `Distribute difficulty levels across both question types as makes sense pedagogically. ` +
+          `Do not repeat the same question idea twice, including across different topics.`,
       },
     ],
     output_config: {
