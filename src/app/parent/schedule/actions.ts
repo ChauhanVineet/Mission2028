@@ -152,11 +152,15 @@ export async function scheduleTest(input: {
         questions: questions.filter((q) => q.topicIndex === topicIndex),
       })),
     );
-  } catch {
+  } catch (err) {
+    const isTimeout =
+      err instanceof Error &&
+      /timeout|timed out/i.test(err.message);
     return {
       success: false,
-      error:
-        "Question generation failed. Check your ANTHROPIC_API_KEY and try again.",
+      error: isTimeout
+        ? "Question generation timed out. This can happen with a lot of topics selected at once — try again, or select fewer topics."
+        : "Question generation failed. Check your ANTHROPIC_API_KEY and try again.",
     };
   }
 
