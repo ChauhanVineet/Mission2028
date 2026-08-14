@@ -75,8 +75,9 @@ export async function generateQuestions(params: {
   topicName: string;
   classLevel: 11 | 12;
   difficultyCounts: DifficultyCounts;
+  typeCounts: Record<QuestionType, number>;
 }): Promise<GeneratedQuestion[]> {
-  const { subjectName, topicName, classLevel, difficultyCounts } = params;
+  const { subjectName, topicName, classLevel, difficultyCounts, typeCounts } = params;
   const total = Object.values(difficultyCounts).reduce((a, b) => a + b, 0);
   if (total === 0) return [];
 
@@ -88,8 +89,9 @@ export async function generateQuestions(params: {
     system:
       "You are an expert JEE (Joint Entrance Examination) question setter for Indian Class 11-12 students preparing for JEE Main. " +
       "You write original, exam-quality questions that strictly match the JEE Main pattern: single-correct MCQs (4 options) and " +
-      "numerical-answer questions. Every question must be self-contained, unambiguous, and solvable without external references. " +
-      "Every solution must be a clear, correct, step-by-step derivation a student can learn from.",
+      "numerical-answer questions, in the exact type counts requested — this mirrors JEE Main's fixed Section A (MCQ) / Section B " +
+      "(numerical) structure and is not negotiable. Every question must be self-contained, unambiguous, and solvable without " +
+      "external references. Every solution must be a clear, correct, step-by-step derivation a student can learn from.",
     messages: [
       {
         role: "user",
@@ -97,8 +99,10 @@ export async function generateQuestions(params: {
           `Generate exactly ${total} JEE Main-style questions for:\n` +
           `Subject: ${subjectName}\n` +
           `Topic: ${topicName} (Class ${classLevel} NCERT syllabus)\n` +
+          `Question type breakdown (follow this exactly — this is a strict JEE Main format requirement): ` +
+          `${typeCounts.mcq_single} mcq_single, ${typeCounts.numerical} numerical.\n` +
           `Difficulty breakdown (follow this exactly): ${describeCounts(difficultyCounts)}\n\n` +
-          `Mix question types (mcq_single and numerical) across the set where it makes sense for this topic. ` +
+          `Distribute the difficulty levels across both question types as makes sense pedagogically. ` +
           `Do not repeat the same question idea twice.`,
       },
     ],

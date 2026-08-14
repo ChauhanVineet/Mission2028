@@ -5,6 +5,7 @@ import { generateQuestions, type GeneratedQuestion } from "@/lib/questions/gener
 import {
   allocateAcrossTopics,
   allocateDifficulty,
+  allocateQuestionTypes,
   type DifficultyMix,
 } from "@/lib/questions/distribute";
 
@@ -116,6 +117,7 @@ export async function scheduleTest(input: {
           topicName: topic.name,
           classLevel: topic.class_level,
           difficultyCounts: allocateDifficulty(count, difficultyMix),
+          typeCounts: allocateQuestionTypes(count),
         }),
       })),
     );

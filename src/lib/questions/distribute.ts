@@ -1,6 +1,44 @@
-import type { Difficulty, DifficultyCounts } from "@/lib/questions/generate";
+import type { Difficulty, DifficultyCounts, QuestionType } from "@/lib/questions/generate";
 
 export type DifficultyMix = "easy" | "balanced" | "hard";
+
+export type QuestionTypeCounts = Record<QuestionType, number>;
+
+// JEE Main's fixed per-subject pattern: Section A is 20 single-correct MCQs,
+// Section B is 5 numerical-value questions — a strict 4:1 (80/20) split.
+// This ratio is not user-configurable; it applies regardless of topic count.
+const QUESTION_TYPE_WEIGHTS: Record<QuestionType, number> = {
+  mcq_single: 0.8,
+  numerical: 0.2,
+};
+
+// Splits `count` questions into mcq_single/numerical using the same
+// largest-remainder rounding as allocateDifficulty, so totals always add
+// back up to `count` exactly.
+export function allocateQuestionTypes(count: number): QuestionTypeCounts {
+  const types: QuestionType[] = ["mcq_single", "numerical"];
+
+  const raw = types.map((type) => count * QUESTION_TYPE_WEIGHTS[type]);
+  const floored = raw.map(Math.floor);
+  let remainder = count - floored.reduce((a, b) => a + b, 0);
+
+  const order = types
+    .map((type, i) => ({ type, frac: raw[i] - floored[i] }))
+    .sort((a, b) => b.frac - a.frac);
+
+  const result: QuestionTypeCounts = { mcq_single: 0, numerical: 0 };
+  types.forEach((type, i) => {
+    result[type] = floored[i];
+  });
+
+  for (const { type } of order) {
+    if (remainder <= 0) break;
+    result[type] += 1;
+    remainder -= 1;
+  }
+
+  return result;
+}
 
 const MIX_WEIGHTS: Record<DifficultyMix, Record<Difficulty, number>> = {
   easy: { easy: 0.5, medium: 0.3, hard: 0.2 },
