@@ -195,13 +195,85 @@ export async function generateQuestions(params: {
 
   // The schema uses snake_case topic_index (models follow schema field names
   // literally); map it to the camelCase shape the rest of the app expects.
-  return parsed.questions.map((q) => ({
+  const mapped = parsed.questions.map((q) => ({
     topicIndex: q.topic_index,
     type: q.type,
-    question_text: q.question_text,
-    options: q.options ?? [],
-    correct_answer: q.correct_answer,
-    solution: q.solution,
+    question_text: cleanQuestionText(q.question_text ?? ""),
+    options: (q.options ?? []).map(stripOptionLabel),
+    correct_answer: (q.correct_answer ?? "").trim(),
+    solution: q.solution ?? "",
     difficulty: q.difficulty,
   }));
+
+  // Grading compares the student's selected option text against
+  // correct_answer, so an MCQ whose correct_answer isn't one of its options
+  // can never be answered correctly. Repair the common case (the model
+  // answered with a letter label like "B") and drop anything still
+  // ungradeable rather than shipping a question that is always marked wrong.
+  return mapped
+    .map((q) => (q.type === "mcq_single" ? repairMcqAnswer(q) : q))
+    .filter((q) => {
+      if (!q.question_text || !q.correct_answer) return false;
+      if (q.type !== "mcq_single") return true;
+      return q.options.length > 0 && q.options.includes(q.correct_answer);
+    });
+}
+
+// Models sometimes prefix options with their label ("A) 9.8 m/s²"); the UI
+// renders options as-is, and grading matches on exact text, so normalize.
+function stripOptionLabel(option: string): string {
+  return option.trim().replace(/^\(?[A-Da-d][)\].:]\s+/, "").trim();
+}
+
+// Some models echo the scaffolding from the prompt into the question itself
+// (e.g. "Topic 0 - Easy (MCQ): The gravitational force..."). Prefixes can be
+// stacked, so strip repeatedly until nothing more matches.
+const SCAFFOLD_PREFIXES = [
+  /^Topic\s*\d+\s*[-–—:]\s*/i,
+  // Combined forms like "Easy (MCQ):" / "Hard (numerical) -"
+  /^(?:easy|medium|hard)\s*\((?:MCQ|numerical)\)\s*[-–—:]?\s*/i,
+  /^\((?:easy|medium|hard)\)\s*[-–—:]?\s*/i,
+  /^(?:easy|medium|hard)\s*[-–—:]\s*/i,
+  /^\((?:MCQ|numerical)\)\s*[-–—:]?\s*/i,
+  /^(?:MCQ|numerical)\s*[-–—:]\s*/i,
+  /^Q\s*\d*\s*[-–—.:]\s*/i,
+];
+
+function cleanQuestionText(text: string): string {
+  let out = text.trim();
+  for (let pass = 0; pass < 6; pass++) {
+    const before = out;
+    for (const pattern of SCAFFOLD_PREFIXES) {
+      out = out.replace(pattern, "").trim();
+    }
+    if (out === before) break;
+  }
+  return out;
+}
+
+// If correct_answer came back as a bare option label ("B", "(b)", "Option C")
+// instead of the option's text, resolve it to the actual option.
+function repairMcqAnswer<T extends { options: string[]; correct_answer: string }>(
+  q: T,
+): T {
+  if (q.options.includes(q.correct_answer)) return q;
+
+  const letter = q.correct_answer
+    .trim()
+    .replace(/^option\s+/i, "")
+    .replace(/[()\].:]/g, "")
+    .trim();
+
+  if (/^[A-Da-d]$/.test(letter)) {
+    const index = letter.toUpperCase().charCodeAt(0) - 65;
+    if (index >= 0 && index < q.options.length) {
+      return { ...q, correct_answer: q.options[index] };
+    }
+  }
+
+  // Fall back to a case-insensitive text match before giving up.
+  const match = q.options.find(
+    (o) => o.toLowerCase() === q.correct_answer.toLowerCase(),
+  );
+  return match ? { ...q, correct_answer: match } : q;
 }
