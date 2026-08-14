@@ -21,7 +21,7 @@ export function LogoutButton() {
     <button
       onClick={handleLogout}
       disabled={loading}
-      className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
+      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm backdrop-blur-sm transition-all duration-150 hover:scale-105 hover:bg-white disabled:opacity-60 disabled:hover:scale-100"
     >
       {loading && <Spinner className="h-3.5 w-3.5" />}
       {loading ? "Logging out…" : "Log out"}

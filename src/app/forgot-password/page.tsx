@@ -94,9 +94,14 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-center text-2xl font-semibold text-slate-900">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 bg-[length:200%_200%] p-4 animate-gradient-x">
+      <div className="pointer-events-none absolute -left-16 top-10 h-72 w-72 rounded-full bg-yellow-300 opacity-30 mix-blend-multiply blur-3xl animate-blob" />
+      <div className="pointer-events-none absolute -right-10 top-1/3 h-72 w-72 rounded-full bg-sky-300 opacity-30 mix-blend-multiply blur-3xl animate-blob animation-delay-2000" />
+      <div className="pointer-events-none absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-emerald-300 opacity-30 mix-blend-multiply blur-3xl animate-blob animation-delay-4000" />
+
+      <div className="relative w-full max-w-sm animate-fade-in-up rounded-3xl bg-white/90 p-8 shadow-2xl ring-1 ring-white/50 backdrop-blur-sm">
+        <div className="mb-2 text-center text-4xl">🔑</div>
+        <h1 className="mb-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-center text-2xl font-extrabold text-transparent">
           Reset password
         </h1>
 
@@ -109,14 +114,14 @@ export default function ForgotPasswordPage() {
               <button
                 onClick={() => sendCode("parent")}
                 disabled={loading}
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 disabled:opacity-60"
+                className="flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 py-2 text-sm font-semibold text-slate-600 transition-all duration-200 hover:scale-105 hover:border-purple-300 hover:text-purple-700 disabled:opacity-60"
               >
                 Parent
               </button>
               <button
                 onClick={() => sendCode("akul")}
                 disabled={loading}
-                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 disabled:opacity-60"
+                className="flex items-center justify-center gap-2 rounded-xl border-2 border-slate-200 py-2 text-sm font-semibold text-slate-600 transition-all duration-200 hover:scale-105 hover:border-purple-300 hover:text-purple-700 disabled:opacity-60"
               >
                 Akul
               </button>
@@ -148,7 +153,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-center text-lg tracking-widest focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-center text-lg tracking-widest transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
                   autoFocus
                 />
               </div>
@@ -166,7 +171,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
                 />
               </div>
 
@@ -183,16 +188,18 @@ export default function ForgotPasswordPage() {
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
                 />
               </div>
 
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {error && (
+                <p className="animate-fade-in-up text-sm text-red-600">{error}</p>
+              )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-95 disabled:opacity-60 disabled:hover:scale-100"
               >
                 {loading && <Spinner />}
                 {loading ? "Resetting…" : "Reset password"}
@@ -202,7 +209,7 @@ export default function ForgotPasswordPage() {
                 type="button"
                 onClick={handleResend}
                 disabled={loading}
-                className="w-full text-center text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                className="w-full text-center text-xs font-medium text-purple-600 hover:text-purple-700"
               >
                 Resend code
               </button>

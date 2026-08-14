@@ -144,9 +144,9 @@ export function TestRunner({
   const timeLow = remainingSeconds < 120;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-purple-50 to-white p-4">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-4 flex items-center justify-between rounded-xl bg-white p-4 shadow-sm">
+        <header className="mb-4 flex animate-fade-in-up items-center justify-between rounded-2xl bg-white p-4 shadow-sm">
           <div>
             <h1 className="text-base font-semibold text-slate-900">
               {testTitle}
@@ -156,8 +156,10 @@ export function TestRunner({
             </p>
           </div>
           <div
-            className={`rounded-lg px-4 py-2 text-lg font-mono font-semibold ${
-              timeLow ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-700"
+            className={`rounded-xl px-4 py-2 text-lg font-mono font-bold shadow-sm ${
+              timeLow
+                ? "animate-pulse bg-gradient-to-r from-red-500 to-rose-500 text-white"
+                : "bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
             }`}
           >
             {minutes}:{seconds.toString().padStart(2, "0")}
@@ -165,9 +167,12 @@ export function TestRunner({
         </header>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <div
+            key={current.id}
+            className="animate-fade-in-up rounded-2xl bg-white p-6 shadow-sm"
+          >
             <div className="mb-3 flex gap-2">
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-medium text-indigo-600">
                 {current.type === "mcq_single" ? "MCQ" : "Numerical"}
               </span>
               {marked[current.id] && (
@@ -186,10 +191,10 @@ export function TestRunner({
                 {current.options.map((option, i) => (
                   <label
                     key={i}
-                    className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition ${
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 text-sm transition-all duration-150 ${
                       answers[current.id] === option
-                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                        : "border-slate-200 text-slate-700 hover:border-slate-300"
+                        ? "scale-[1.01] border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm"
+                        : "border-slate-200 text-slate-700 hover:scale-[1.01] hover:border-purple-300"
                     }`}
                   >
                     <input
@@ -211,20 +216,20 @@ export function TestRunner({
                 value={answers[current.id] ?? ""}
                 onChange={(e) => setAnswer(e.target.value === "" ? null : e.target.value)}
                 placeholder="Enter your numeric answer"
-                className="w-full max-w-xs rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full max-w-xs rounded-xl border border-slate-300 px-4 py-2.5 text-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
               />
             )}
 
             <div className="mt-8 flex flex-wrap gap-2">
               <button
                 onClick={clearResponse}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:scale-105 hover:bg-slate-50"
               >
                 Clear response
               </button>
               <button
                 onClick={toggleMark}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:scale-105 hover:bg-slate-50"
               >
                 {marked[current.id] ? "Unmark review" : "Mark for review"}
               </button>
@@ -232,7 +237,7 @@ export function TestRunner({
               <button
                 onClick={() => goTo(currentIndex - 1)}
                 disabled={currentIndex === 0}
-                className="rounded-lg border border-slate-200 px-4 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-xl border border-slate-200 px-4 py-1.5 text-sm font-medium text-slate-600 transition hover:scale-105 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
               >
                 ← Back
               </button>
@@ -240,13 +245,13 @@ export function TestRunner({
                 <>
                   <button
                     onClick={markAndNext}
-                    className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-100"
+                    className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-1.5 text-sm font-medium text-purple-700 transition hover:scale-105 hover:bg-purple-100"
                   >
                     Mark &amp; Next
                   </button>
                   <button
                     onClick={saveAndNext}
-                    className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"
+                    className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:scale-105 hover:shadow-md active:scale-95"
                   >
                     Save &amp; Next
                   </button>
@@ -254,7 +259,7 @@ export function TestRunner({
               ) : (
                 <button
                   onClick={() => setShowSubmitConfirm(true)}
-                  className="rounded-lg bg-green-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-green-500"
+                  className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:scale-105 hover:shadow-md active:scale-95"
                 >
                   Submit test
                 </button>
@@ -262,7 +267,10 @@ export function TestRunner({
             </div>
           </div>
 
-          <div className="h-fit rounded-2xl bg-white p-4 shadow-sm">
+          <div
+            className="h-fit animate-fade-in-up rounded-2xl bg-white p-4 shadow-sm"
+            style={{ animationDelay: "80ms" }}
+          >
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
               Questions
             </h2>
@@ -286,8 +294,8 @@ export function TestRunner({
                   <button
                     key={q.id}
                     onClick={() => goTo(i)}
-                    className={`rounded-md border py-1.5 text-xs font-semibold transition ${classes} ${
-                      isCurrent ? "ring-2 ring-indigo-500" : ""
+                    className={`rounded-lg border py-1.5 text-xs font-semibold transition-all duration-150 hover:scale-110 ${classes} ${
+                      isCurrent ? "ring-2 ring-indigo-500 animate-pulse" : ""
                     }`}
                   >
                     {i + 1}
@@ -305,7 +313,7 @@ export function TestRunner({
 
             <button
               onClick={() => setShowSubmitConfirm(true)}
-              className="mt-4 w-full rounded-lg bg-slate-800 py-2 text-sm font-semibold text-white hover:bg-slate-900"
+              className="mt-4 w-full rounded-xl bg-gradient-to-r from-slate-800 to-slate-900 py-2 text-sm font-semibold text-white shadow-sm transition hover:scale-105 hover:shadow-md active:scale-95"
             >
               Submit test
             </button>
@@ -357,7 +365,7 @@ function SubmitConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-sm animate-pop-in rounded-2xl bg-white p-6 shadow-xl">
         <h2 className="mb-2 text-lg font-semibold text-slate-900">
           Submit test?
         </h2>
@@ -369,14 +377,14 @@ function SubmitConfirmDialog({
           <button
             onClick={onCancel}
             disabled={submitting}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
           >
             Keep going
           </button>
           <button
             onClick={onConfirm}
             disabled={submitting}
-            className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-60"
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:scale-105 hover:shadow-md active:scale-95 disabled:opacity-60 disabled:hover:scale-100"
           >
             {submitting && <Spinner className="h-4 w-4" />}
             {submitting ? "Submitting…" : "Submit"}
@@ -387,6 +395,8 @@ function SubmitConfirmDialog({
   );
 }
 
+const CONFETTI = ["🎉", "✨", "🎊", "⭐", "🎈"];
+
 export function ResultSummary({
   testTitle,
   result,
@@ -395,31 +405,45 @@ export function ResultSummary({
   result: SubmitResult;
 }) {
   const router = useRouter();
+  const pct =
+    result.totalMarks > 0
+      ? Math.round((result.score / result.totalMarks) * 100)
+      : 0;
+  const reaction = pct >= 75 ? "🏆" : pct >= 50 ? "💪" : "📚";
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-lg">
-        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-indigo-50 via-purple-50 to-white p-6">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center gap-6 pt-4 text-2xl">
+        {CONFETTI.map((emoji, i) => (
+          <span
+            key={i}
+            className="animate-pop-in"
+            style={{ animationDelay: `${i * 90}ms` }}
+          >
+            {emoji}
+          </span>
+        ))}
+      </div>
+
+      <div className="relative mx-auto max-w-lg">
+        <div className="animate-pop-in rounded-3xl bg-white p-8 text-center shadow-xl">
+          <div className="mb-2 text-4xl">{reaction}</div>
           <p className="mb-1 text-sm text-slate-500">{testTitle}</p>
-          <p className="mb-1 text-5xl font-bold text-indigo-600">
+          <p className="mb-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-5xl font-extrabold text-transparent">
             {result.score}
             <span className="text-2xl text-slate-400">/{result.totalMarks}</span>
           </p>
           <p className="mb-6 text-sm text-slate-500">Test complete!</p>
 
           <div className="mb-6 grid grid-cols-3 gap-3 text-sm">
-            <Stat label="Correct" value={result.correctCount} color="text-green-600" />
-            <Stat label="Incorrect" value={result.incorrectCount} color="text-red-600" />
+            <Stat label="Correct" value={result.correctCount} color="text-emerald-600" />
+            <Stat label="Incorrect" value={result.incorrectCount} color="text-rose-600" />
             <Stat label="Skipped" value={result.skippedCount} color="text-slate-500" />
-          </div>
-
-          <div className="mb-4 rounded-xl bg-indigo-50 p-4 text-sm text-indigo-700">
-            Detailed error analysis with solutions is coming in the next phase.
           </div>
 
           <button
             onClick={() => router.push("/akul")}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+            className="rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95"
           >
             Back to dashboard
           </button>

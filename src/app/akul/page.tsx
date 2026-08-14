@@ -76,12 +76,15 @@ export default async function AkulDashboard() {
     }));
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-3xl">
-        <header className="mb-8 flex items-center justify-between">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-sky-50 via-purple-50 to-white p-6">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-sky-200 opacity-40 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 top-40 h-96 w-96 rounded-full bg-purple-200 opacity-40 blur-3xl" />
+
+      <div className="relative mx-auto max-w-3xl">
+        <header className="mb-8 flex animate-fade-in-up items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">
-              Mission2028
+            <h1 className="bg-gradient-to-r from-sky-600 via-purple-600 to-pink-600 bg-clip-text text-2xl font-extrabold text-transparent">
+              Mission2028 🎓
             </h1>
             <p className="text-sm text-slate-500">
               JEE 2028 · Physics · Chemistry · Math
@@ -92,7 +95,11 @@ export default async function AkulDashboard() {
 
         <div className="space-y-6">
           {!tests || tests.length === 0 ? (
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <div
+              className="animate-fade-in-up rounded-2xl bg-white p-6 text-center shadow-sm"
+              style={{ animationDelay: "80ms" }}
+            >
+              <div className="mb-2 text-3xl">🧘</div>
               <h2 className="mb-2 text-lg font-medium text-slate-900">
                 No tests scheduled yet
               </h2>
@@ -102,11 +109,12 @@ export default async function AkulDashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {tests.map((test) => (
+              {tests.map((test, i) => (
                 <Link
                   key={test.id}
                   href={`/akul/test/${test.id}`}
-                  className="block rounded-2xl bg-white p-5 shadow-sm transition hover:shadow-md"
+                  className="block animate-fade-in-up rounded-2xl bg-white p-5 shadow-sm ring-1 ring-transparent transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:ring-purple-200"
+                  style={{ animationDelay: `${80 + i * 70}ms` }}
                 >
                   <h2 className="mb-1 text-base font-semibold text-slate-900">
                     {test.title}
@@ -114,7 +122,7 @@ export default async function AkulDashboard() {
                   <p className="mb-2 text-sm text-slate-500">
                     {test.question_count} questions · ~{test.duration_minutes} min
                   </p>
-                  <p className="text-sm font-medium text-indigo-600">
+                  <p className="text-sm font-semibold text-purple-600">
                     {formatDeadline(test.deadline)}
                   </p>
                 </Link>

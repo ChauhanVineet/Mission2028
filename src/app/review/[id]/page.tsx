@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { computeBreakdown, sortForReview, type GradedAnswer } from "@/lib/tests/analysis";
 import type { Difficulty, QuestionType } from "@/lib/questions/generate";
+import { themeForLabel } from "@/lib/colorTheme";
 
 type AttemptAnswerRow = {
   selected_answer: string | null;
@@ -66,12 +67,12 @@ export default async function ReviewPage({
 
   if (!attempt) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
+      <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-purple-50 to-white p-6">
         <div className="mx-auto max-w-2xl">
-          <Link href={backHref} className="mb-6 inline-block text-sm text-indigo-600">
+          <Link href={backHref} className="mb-6 inline-block text-sm font-medium text-purple-600">
             ← Back
           </Link>
-          <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+          <div className="animate-pop-in rounded-2xl bg-white p-8 text-center shadow-sm">
             <h1 className="mb-2 text-lg font-semibold text-slate-900">{test.title}</h1>
             <p className="text-sm text-slate-500">This test hasn&apos;t been completed yet.</p>
           </div>
@@ -113,13 +114,15 @@ export default async function ReviewPage({
   const orderedAnswers = sortForReview(answers);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-3xl">
-        <Link href={backHref} className="mb-6 inline-block text-sm text-indigo-600">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-indigo-50 via-purple-50 to-white p-6">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-purple-200 opacity-30 blur-3xl" />
+
+      <div className="relative mx-auto max-w-3xl">
+        <Link href={backHref} className="mb-6 inline-block text-sm font-medium text-purple-600 hover:text-purple-700">
           ← Back
         </Link>
 
-        <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
+        <div className="mb-6 animate-pop-in rounded-3xl bg-white p-6 shadow-sm">
           <h1 className="mb-1 text-xl font-semibold text-slate-900">{test.title}</h1>
           <p className="mb-4 text-sm text-slate-500">
             Submitted {new Date(attempt.submitted_at!).toLocaleDateString(undefined, {
@@ -128,15 +131,15 @@ export default async function ReviewPage({
               day: "numeric",
             })}
           </p>
-          <p className="text-4xl font-bold text-indigo-600">
+          <p className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-4xl font-extrabold text-transparent">
             {attempt.score}
             <span className="text-xl text-slate-400">/{attempt.total_marks}</span>
           </p>
         </div>
 
         <div className="mb-6 grid gap-4 sm:grid-cols-2">
-          <BreakdownCard title="By topic" rows={topicBreakdown} />
-          <BreakdownCard title="By difficulty" rows={difficultyBreakdown} capitalize />
+          <BreakdownCard title="By topic" rows={topicBreakdown} delay={80} />
+          <BreakdownCard title="By difficulty" rows={difficultyBreakdown} capitalize delay={140} />
         </div>
 
         <div className="space-y-4">
@@ -149,17 +152,28 @@ export default async function ReviewPage({
   );
 }
 
+function breakdownBarColor(pct: number) {
+  if (pct >= 75) return "from-emerald-400 to-teal-500";
+  if (pct >= 50) return "from-amber-400 to-orange-500";
+  return "from-rose-400 to-red-500";
+}
+
 function BreakdownCard({
   title,
   rows,
   capitalize,
+  delay = 0,
 }: {
   title: string;
   rows: { label: string; correct: number; total: number }[];
   capitalize?: boolean;
+  delay?: number;
 }) {
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm">
+    <div
+      className="animate-fade-in-up rounded-2xl bg-white p-5 shadow-sm"
+      style={{ animationDelay: `${delay}ms` }}
+    >
       <h2 className="mb-3 text-sm font-semibold text-slate-700">{title}</h2>
       <div className="space-y-2.5">
         {rows.map((row) => {
@@ -172,9 +186,9 @@ function BreakdownCard({
                   {row.correct}/{row.total}
                 </span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                 <div
-                  className="h-full rounded-full bg-indigo-500"
+                  className={`h-full rounded-full bg-gradient-to-r transition-all duration-700 ${breakdownBarColor(pct)}`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -191,10 +205,17 @@ function AnswerCard({ answer, index }: { answer: GradedAnswer; index: number }) 
     answer.isCorrect === true ? "Correct" : answer.isCorrect === false ? "Incorrect" : "Skipped";
   const statusClasses =
     answer.isCorrect === true
-      ? "bg-green-50 text-green-700"
+      ? "bg-emerald-50 text-emerald-700"
       : answer.isCorrect === false
-        ? "bg-red-50 text-red-700"
+        ? "bg-rose-50 text-rose-700"
         : "bg-slate-100 text-slate-600";
+  const borderAccent =
+    answer.isCorrect === true
+      ? "border-l-emerald-400"
+      : answer.isCorrect === false
+        ? "border-l-rose-400"
+        : "border-l-slate-300";
+  const subjectTheme = themeForLabel(answer.subjectName);
 
   const solutionBlock = (
     <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
@@ -204,13 +225,16 @@ function AnswerCard({ answer, index }: { answer: GradedAnswer; index: number }) 
   );
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm">
+    <div
+      className={`animate-fade-in-up rounded-2xl border-l-4 bg-white p-5 shadow-sm ${borderAccent}`}
+      style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}
+    >
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold text-slate-400">Q{index + 1}</span>
         <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusClasses}`}>
           {statusLabel}
         </span>
-        <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600">
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${subjectTheme.bg} ${subjectTheme.text}`}>
           {answer.subjectName} · {answer.topicName}
         </span>
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium capitalize text-slate-500">

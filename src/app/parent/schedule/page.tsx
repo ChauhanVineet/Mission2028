@@ -60,12 +60,15 @@ export default async function ScheduleTestPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-5xl">
-        <header className="mb-8 flex items-center justify-between">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-indigo-50 via-purple-50 to-white p-6">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-purple-200 opacity-40 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 top-40 h-96 w-96 rounded-full bg-pink-200 opacity-40 blur-3xl" />
+
+      <div className="relative mx-auto max-w-5xl">
+        <header className="mb-8 flex animate-fade-in-up items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">
-              Schedule a Test
+            <h1 className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-2xl font-extrabold text-transparent">
+              Schedule a Test ✨
             </h1>
             <p className="text-sm text-slate-500">
               Select the topics Akul should be tested on.

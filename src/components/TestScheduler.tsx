@@ -7,6 +7,7 @@ import {
 } from "@/app/parent/schedule/actions";
 import type { DifficultyMix } from "@/lib/questions/distribute";
 import { Spinner } from "@/components/Spinner";
+import { themeForLabel } from "@/lib/colorTheme";
 
 type Topic = {
   id: string;
@@ -29,10 +30,15 @@ type ScheduledTest = {
   questions: ScheduledQuestion[];
 };
 
-const MIX_OPTIONS: { value: DifficultyMix; label: string }[] = [
-  { value: "easy", label: "Easier" },
-  { value: "balanced", label: "Balanced" },
-  { value: "hard", label: "Challenging" },
+const MIX_OPTIONS: {
+  value: DifficultyMix;
+  label: string;
+  emoji: string;
+  active: string;
+}[] = [
+  { value: "easy", label: "Easier", emoji: "😊", active: "from-emerald-500 to-teal-500" },
+  { value: "balanced", label: "Balanced", emoji: "⚖️", active: "from-indigo-500 to-purple-500" },
+  { value: "hard", label: "Challenging", emoji: "🔥", active: "from-rose-500 to-orange-500" },
 ];
 
 function defaultDeadline() {
@@ -124,29 +130,38 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
   ).length;
   const allSelectedInSubject =
     subjectSelectedCount === activeSubject.topics.length;
+  const activeTheme = themeForLabel(activeSubject.name);
 
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <div className="mb-5 flex gap-2">
+        <div className="animate-fade-in-up rounded-2xl bg-white p-6 shadow-sm">
+          <div className="mb-5 flex flex-wrap gap-2">
             {subjects.map((subject) => {
+              const theme = themeForLabel(subject.name);
               const count = subject.topics.filter(
                 (t) => selected[t.id],
               ).length;
+              const isActive = subject.id === activeSubjectId;
               return (
                 <button
                   key={subject.id}
                   onClick={() => setActiveSubjectId(subject.id)}
-                  className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-                    subject.id === activeSubjectId
-                      ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                      : "border-slate-200 text-slate-500 hover:border-slate-300"
+                  className={`rounded-xl border-2 px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+                    isActive
+                      ? `scale-105 border-transparent bg-gradient-to-r ${theme.grad} text-white shadow-md`
+                      : "border-slate-200 text-slate-500 hover:scale-105 hover:border-slate-300"
                   }`}
                 >
                   {subject.name}
                   {count > 0 && (
-                    <span className="ml-1.5 rounded-full bg-indigo-600 px-1.5 py-0.5 text-xs text-white">
+                    <span
+                      className={`ml-1.5 rounded-full px-1.5 py-0.5 text-xs ${
+                        isActive
+                          ? "bg-white/25 text-white"
+                          : `${theme.solid} text-white`
+                      }`}
+                    >
                       {count}
                     </span>
                   )}
@@ -163,7 +178,7 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
               onClick={() =>
                 setSubjectTopics(activeSubject, !allSelectedInSubject)
               }
-              className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+              className={`text-xs font-semibold ${activeTheme.text} hover:opacity-75`}
             >
               {allSelectedInSubject ? "Clear all" : "Select all"}
             </button>
@@ -181,6 +196,7 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
                     topic={topic}
                     checked={!!selected[topic.id]}
                     onToggle={() => toggleTopic(topic.id)}
+                    theme={activeTheme}
                   />
                 ))}
               </ul>
@@ -196,6 +212,7 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
                     topic={topic}
                     checked={!!selected[topic.id]}
                     onToggle={() => toggleTopic(topic.id)}
+                    theme={activeTheme}
                   />
                 ))}
               </ul>
@@ -203,7 +220,10 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
           </div>
         </div>
 
-        <div className="h-fit space-y-5 rounded-2xl bg-white p-5 shadow-sm">
+        <div
+          className="h-fit animate-fade-in-up space-y-5 rounded-2xl bg-white p-5 shadow-sm"
+          style={{ animationDelay: "80ms" }}
+        >
           <div>
             <h2 className="mb-1 text-sm font-semibold text-slate-700">
               Selected topics
@@ -248,12 +268,13 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
                   <button
                     key={opt.value}
                     onClick={() => setDifficultyMix(opt.value)}
-                    className={`rounded-lg border py-1.5 text-xs font-medium transition ${
+                    className={`rounded-xl border-2 py-1.5 text-xs font-semibold transition-all duration-200 ${
                       difficultyMix === opt.value
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                        : "border-slate-200 text-slate-500 hover:border-slate-300"
+                        ? `scale-105 border-transparent bg-gradient-to-r ${opt.active} text-white shadow-sm`
+                        : "border-slate-200 text-slate-500 hover:scale-105 hover:border-slate-300"
                     }`}
                   >
+                    <span className="mr-1">{opt.emoji}</span>
                     {opt.label}
                   </button>
                 ))}
@@ -274,7 +295,7 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
                 max={20}
                 value={questionCount}
                 onChange={(e) => setQuestionCount(Number(e.target.value))}
-                className="w-full accent-indigo-600"
+                className="w-full accent-purple-600"
               />
               <p className="mt-1 text-[11px] text-slate-400">
                 ≈ {questionCount * 3} minute test
@@ -294,7 +315,7 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
                 value={deadline}
                 min={new Date().toISOString().slice(0, 10)}
                 onChange={(e) => setDeadline(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
               />
             </div>
           </div>
@@ -303,10 +324,10 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
             <button
               disabled={totalSelected === 0 || scheduling}
               onClick={handleSchedule}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
             >
               {scheduling && <Spinner />}
-              {scheduling ? "Generating with Claude…" : "Schedule test"}
+              {scheduling ? "Generating with Claude…" : "✨ Schedule test"}
             </button>
             {scheduling && (
               <p className="mt-2 text-center text-[11px] text-slate-400">
@@ -318,7 +339,7 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
+        <div className="animate-fade-in-up rounded-xl bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
@@ -330,19 +351,25 @@ function TopicRow({
   topic,
   checked,
   onToggle,
+  theme,
 }: {
   topic: Topic;
   checked: boolean;
   onToggle: () => void;
+  theme: ReturnType<typeof themeForLabel>;
 }) {
   return (
     <li>
-      <label className="flex cursor-pointer items-start gap-2 rounded-md px-1.5 py-1 text-sm text-slate-700 hover:bg-slate-50">
+      <label
+        className={`flex cursor-pointer items-start gap-2 rounded-lg px-1.5 py-1.5 text-sm transition-all duration-150 hover:scale-[1.02] ${
+          checked ? `${theme.bg} ${theme.text} font-medium` : "text-slate-700 hover:bg-slate-50"
+        }`}
+      >
         <input
           type="checkbox"
           checked={checked}
           onChange={onToggle}
-          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
         />
         <span>{topic.name}</span>
       </label>
@@ -365,10 +392,14 @@ function ScheduleConfirmation({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl bg-white p-6 shadow-sm">
-        <div className="mb-1 flex items-center gap-2 text-green-700">
-          <span className="text-lg">✓</span>
-          <h2 className="text-lg font-semibold">Test scheduled</h2>
+      <div className="animate-pop-in rounded-2xl bg-white p-6 shadow-sm">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 text-xl text-white shadow-md">
+            ✓
+          </span>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Test scheduled! 🎉
+          </h2>
         </div>
         <p className="mb-4 text-sm text-slate-500">
           {test.title} · {test.questionCount} questions · ~{test.durationMinutes}{" "}
@@ -380,21 +411,30 @@ function ScheduleConfirmation({
         </p>
         <button
           onClick={onScheduleAnother}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+          className="rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95"
         >
           Schedule another test
         </button>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm">
+      <div
+        className="animate-fade-in-up rounded-2xl bg-white p-6 shadow-sm"
+        style={{ animationDelay: "100ms" }}
+      >
         <h2 className="mb-4 text-sm font-semibold text-slate-700">
           Questions in this test
         </h2>
         <div className="space-y-4">
-          {test.questions.map((q, i) => (
-            <div key={i} className="rounded-xl border border-slate-200 p-4">
+          {test.questions.map((q, i) => {
+            const qTheme = themeForLabel(q.subjectName);
+            return (
+            <div
+              key={i}
+              className="animate-fade-in-up rounded-xl border border-slate-200 p-4 transition-shadow hover:shadow-md"
+              style={{ animationDelay: `${140 + i * 40}ms` }}
+            >
               <div className="mb-2 flex flex-wrap gap-2">
-                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600">
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${qTheme.bg} ${qTheme.text}`}>
                   {q.subjectName} · {q.topicName}
                 </span>
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
@@ -438,7 +478,8 @@ function ScheduleConfirmation({
                 <p className="mt-2 whitespace-pre-line">{q.solution}</p>
               </details>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
