@@ -80,25 +80,32 @@ export default async function ParentDashboard() {
               Scheduled tests
             </h2>
             <div className="space-y-3">
-              {tests.map((test) => (
-                <div
-                  key={test.id}
-                  className="flex items-center justify-between rounded-xl border border-slate-100 p-4"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">
-                      {test.title}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {test.question_count} questions · ~{test.duration_minutes}{" "}
-                      min · due {formatDeadline(test.deadline)}
-                    </p>
+              {tests.map((test) => {
+                const row = (
+                  <div className="flex items-center justify-between rounded-xl border border-slate-100 p-4 transition hover:border-slate-200 hover:bg-slate-50">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        {test.title}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {test.question_count} questions · ~{test.duration_minutes}{" "}
+                        min · due {formatDeadline(test.deadline)}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium capitalize text-slate-600">
+                      {test.status}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium capitalize text-slate-600">
-                    {test.status}
-                  </span>
-                </div>
-              ))}
+                );
+
+                return test.status === "completed" ? (
+                  <Link key={test.id} href={`/review/${test.id}`} className="block">
+                    {row}
+                  </Link>
+                ) : (
+                  <div key={test.id}>{row}</div>
+                );
+              })}
             </div>
           </div>
         )}
