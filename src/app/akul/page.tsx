@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/LogoutButton";
 import { TestHistoryList, type PastTest } from "@/components/TestHistoryList";
+import { PageNav } from "@/components/PageNav";
 
 type TestRow = {
   id: string;
@@ -81,6 +82,8 @@ export default async function AkulDashboard() {
       <div className="pointer-events-none absolute -right-24 top-40 h-96 w-96 rounded-full bg-purple-200 opacity-40 blur-3xl" />
 
       <div className="relative mx-auto max-w-3xl">
+        <PageNav homeHref="/akul" />
+
         <header className="mb-8 flex animate-fade-in-up items-center justify-between">
           <div>
             <h1 className="bg-gradient-to-r from-sky-600 via-purple-600 to-pink-600 bg-clip-text text-2xl font-extrabold text-transparent">

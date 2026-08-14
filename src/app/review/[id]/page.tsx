@@ -1,9 +1,9 @@
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { computeBreakdown, sortForReview, type GradedAnswer } from "@/lib/tests/analysis";
 import type { Difficulty, QuestionType } from "@/lib/questions/generate";
 import { themeForLabel } from "@/lib/colorTheme";
+import { PageNav } from "@/components/PageNav";
 
 type AttemptAnswerRow = {
   selected_answer: string | null;
@@ -69,9 +69,7 @@ export default async function ReviewPage({
     return (
       <div className="min-h-screen bg-gradient-to-b from-indigo-50 via-purple-50 to-white p-6">
         <div className="mx-auto max-w-2xl">
-          <Link href={backHref} className="mb-6 inline-block text-sm font-medium text-purple-600">
-            ← Back
-          </Link>
+          <PageNav homeHref={backHref} />
           <div className="animate-pop-in rounded-2xl bg-white p-8 text-center shadow-sm">
             <h1 className="mb-2 text-lg font-semibold text-slate-900">{test.title}</h1>
             <p className="text-sm text-slate-500">This test hasn&apos;t been completed yet.</p>
@@ -118,9 +116,7 @@ export default async function ReviewPage({
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-purple-200 opacity-30 blur-3xl" />
 
       <div className="relative mx-auto max-w-3xl">
-        <Link href={backHref} className="mb-6 inline-block text-sm font-medium text-purple-600 hover:text-purple-700">
-          ← Back
-        </Link>
+        <PageNav homeHref={backHref} />
 
         <div className="mb-6 animate-pop-in rounded-3xl bg-white p-6 shadow-sm">
           <h1 className="mb-1 text-xl font-semibold text-slate-900">{test.title}</h1>

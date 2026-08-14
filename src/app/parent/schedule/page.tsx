@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/LogoutButton";
 import { TestScheduler } from "@/components/TestScheduler";
+import { PageNav } from "@/components/PageNav";
 
 // Question generation can take up to ~40s per topic; give the Server Action
 // route enough headroom to avoid a platform timeout on larger tests.
@@ -65,6 +66,8 @@ export default async function ScheduleTestPage() {
       <div className="pointer-events-none absolute -right-24 top-40 h-96 w-96 rounded-full bg-pink-200 opacity-40 blur-3xl" />
 
       <div className="relative mx-auto max-w-5xl">
+        <PageNav homeHref="/parent" />
+
         <header className="mb-8 flex animate-fade-in-up items-center justify-between">
           <div>
             <h1 className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-2xl font-extrabold text-transparent">

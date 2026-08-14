@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "@/components/LogoutButton";
+import { PageNav } from "@/components/PageNav";
+import { CancelTestButton } from "@/components/CancelTestButton";
 
 type TestRow = {
   id: string;
@@ -62,6 +64,8 @@ export default async function ParentDashboard() {
       <div className="pointer-events-none absolute -right-24 top-40 h-96 w-96 rounded-full bg-pink-200 opacity-40 blur-3xl" />
 
       <div className="relative mx-auto max-w-3xl">
+        <PageNav homeHref="/parent" />
+
         <header className="mb-8 flex animate-fade-in-up items-center justify-between">
           <div>
             <h1 className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-2xl font-extrabold text-transparent">
@@ -119,14 +123,19 @@ export default async function ParentDashboard() {
                         min · due {formatDeadline(test.deadline)}
                       </p>
                     </div>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
-                        STATUS_STYLES[test.status] ??
-                        "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {test.status}
-                    </span>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${
+                          STATUS_STYLES[test.status] ??
+                          "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {test.status}
+                      </span>
+                      {test.status === "scheduled" && (
+                        <CancelTestButton testId={test.id} />
+                      )}
+                    </div>
                   </div>
                 );
 

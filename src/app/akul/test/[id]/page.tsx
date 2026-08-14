@@ -1,8 +1,8 @@
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { StartTestButton } from "@/components/StartTestButton";
 import { TestRunner, ResultSummary } from "@/components/TestRunner";
+import { PageNav } from "@/components/PageNav";
 import type { QuestionType } from "@/lib/questions/generate";
 
 // Question generation can be slow; give this route (and its Server Actions)
@@ -135,12 +135,7 @@ export default async function TakeTestPage({
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-2xl">
-        <Link
-          href="/akul"
-          className="mb-6 inline-block text-sm text-indigo-600 hover:text-indigo-700"
-        >
-          ← Back
-        </Link>
+        <PageNav homeHref="/akul" />
 
         <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
           <h1 className="mb-2 text-xl font-semibold text-slate-900">
