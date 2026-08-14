@@ -169,7 +169,17 @@ async function scheduleTestInner(input: {
     generatedBatches = perSubjectResults.flatMap(({ activeTopics, questions }) =>
       activeTopics.map(({ topic }, topicIndex) => ({
         topic,
-        questions: questions.filter((q) => q.topicIndex === topicIndex),
+        // Anything tagged with an out-of-range topic_index would otherwise be
+        // dropped silently; fold it into the first topic of the subject so
+        // generated work is never thrown away.
+        questions: questions.filter((q) =>
+          topicIndex === 0
+            ? q.topicIndex === 0 ||
+              q.topicIndex == null ||
+              q.topicIndex < 0 ||
+              q.topicIndex >= activeTopics.length
+            : q.topicIndex === topicIndex,
+        ),
       })),
     );
   } catch (err) {
@@ -177,7 +187,7 @@ async function scheduleTestInner(input: {
       success: false,
       error: friendlyErrorMessage(
         err,
-        "Question generation failed. Check your ANTHROPIC_API_KEY and try again.",
+        "Question generation failed. Check your OPENROUTER_API_KEY and try again.",
       ),
     };
   }
@@ -193,6 +203,15 @@ async function scheduleTestInner(input: {
       solution: q.solution,
     })),
   );
+
+  // Never create an empty test — without this, a generation that returned
+  // nothing usable would silently produce a 0-question test on the dashboard.
+  if (rowsToInsert.length === 0) {
+    return {
+      success: false,
+      error: "The question generator didn't return any usable questions. Try again.",
+    };
+  }
 
   const { data: insertedQuestions, error: insertQuestionsError } = await supabase
     .from("questions")

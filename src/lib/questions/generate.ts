@@ -1,5 +1,5 @@
 import "server-only";
-import { createAnthropicClient } from "@/lib/anthropic/client";
+import { createOpenRouterClient, OPENROUTER_MODEL } from "@/lib/openrouter/client";
 
 export type QuestionType = "mcq_single" | "numerical";
 export type Difficulty = "easy" | "medium" | "hard";
@@ -16,6 +16,19 @@ export type GeneratedQuestion = {
   type: QuestionType;
   question_text: string;
   options: string[];
+  correct_answer: string;
+  solution: string;
+  difficulty: Difficulty;
+};
+
+// Exactly as it comes back from the model, matching QUESTIONS_SCHEMA's
+// field names (snake_case topic_index). Mapped to GeneratedQuestion before
+// leaving this module.
+type RawGeneratedQuestion = {
+  topic_index: number;
+  type: QuestionType;
+  question_text: string;
+  options: string[] | null;
   correct_answer: string;
   solution: string;
   difficulty: Difficulty;
@@ -119,24 +132,27 @@ export async function generateQuestions(params: {
   );
   if (grandTotal === 0) return [];
 
-  const client = createAnthropicClient();
+  const client = createOpenRouterClient();
 
-  const response = await client.messages.create({
-    model: "claude-opus-5",
+  const response = await client.chat.completions.create({
+    model: OPENROUTER_MODEL,
     max_tokens: 16000,
-    system:
-      "You are an expert JEE (Joint Entrance Examination) question setter for Indian Class 11-12 students preparing for JEE Main. " +
-      "You write original, exam-quality questions that strictly match the JEE Main pattern: single-correct MCQs (4 options) and " +
-      "numerical-answer questions, in the exact type counts requested — this mirrors JEE Main's fixed Section A (MCQ) / Section B " +
-      "(numerical) structure and is not negotiable. Every question must be self-contained, unambiguous, and solvable without " +
-      "external references. Every solution must be a clear, correct, step-by-step derivation a student can learn from.\n\n" +
-      "TEXT FORMATTING — strict, no exceptions: all text is rendered as plain text with no markup interpreter (no LaTeX, no " +
-      "HTML, no Markdown). Never write LaTeX (no $, \\_, \\^, \\frac, \\text, etc.), HTML tags (no <sub>, <sup>), Markdown, or " +
-      "literal escape-sequence text such as \\u2082 or \\u00b2. For subscripts and superscripts (chemical formulas, exponents, " +
-      "units, ordinals), type the actual Unicode character directly, e.g. H₂O, CO₂, Fe²⁺, x², 10⁻³, Ω, °C, √, π, ×, ÷, ±, ≤, ≥, " +
-      "→. If a required character has no clean Unicode subscript/superscript form, write it inline instead (e.g. 'x to the " +
-      "power n' or 'x^n' as last resort, never a raw escape code).",
     messages: [
+      {
+        role: "system",
+        content:
+          "You are an expert JEE (Joint Entrance Examination) question setter for Indian Class 11-12 students preparing for JEE Main. " +
+          "You write original, exam-quality questions that strictly match the JEE Main pattern: single-correct MCQs (4 options) and " +
+          "numerical-answer questions, in the exact type counts requested — this mirrors JEE Main's fixed Section A (MCQ) / Section B " +
+          "(numerical) structure and is not negotiable. Every question must be self-contained, unambiguous, and solvable without " +
+          "external references. Every solution must be a clear, correct, step-by-step derivation a student can learn from.\n\n" +
+          "TEXT FORMATTING — strict, no exceptions: all text is rendered as plain text with no markup interpreter (no LaTeX, no " +
+          "HTML, no Markdown). Never write LaTeX (no $, \\_, \\^, \\frac, \\text, etc.), HTML tags (no <sub>, <sup>), Markdown, or " +
+          "literal escape-sequence text such as \\u2082 or \\u00b2. For subscripts and superscripts (chemical formulas, exponents, " +
+          "units, ordinals), type the actual Unicode character directly, e.g. H₂O, CO₂, Fe²⁺, x², 10⁻³, Ω, °C, √, π, ×, ÷, ±, ≤, ≥, " +
+          "→. If a required character has no clean Unicode subscript/superscript form, write it inline instead (e.g. 'x to the " +
+          "power n' or 'x^n' as last resort, never a raw escape code).",
+      },
       {
         role: "user",
         content:
@@ -151,19 +167,41 @@ export async function generateQuestions(params: {
           `Do not repeat the same question idea twice, including across different topics.`,
       },
     ],
-    output_config: {
-      format: {
-        type: "json_schema",
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "jee_questions",
+        strict: true,
         schema: QUESTIONS_SCHEMA,
       },
     },
   });
 
-  const textBlock = response.content.find((block) => block.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("Claude returned no text content for question generation.");
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("The question generator returned an empty response.");
   }
 
-  const parsed = JSON.parse(textBlock.text) as { questions: GeneratedQuestion[] };
-  return parsed.questions;
+  let parsed: { questions: RawGeneratedQuestion[] };
+  try {
+    parsed = JSON.parse(content) as { questions: RawGeneratedQuestion[] };
+  } catch {
+    throw new Error("The question generator returned malformed JSON.");
+  }
+
+  if (!Array.isArray(parsed?.questions)) {
+    throw new Error("The question generator returned no questions.");
+  }
+
+  // The schema uses snake_case topic_index (models follow schema field names
+  // literally); map it to the camelCase shape the rest of the app expects.
+  return parsed.questions.map((q) => ({
+    topicIndex: q.topic_index,
+    type: q.type,
+    question_text: q.question_text,
+    options: q.options ?? [],
+    correct_answer: q.correct_answer,
+    solution: q.solution,
+    difficulty: q.difficulty,
+  }));
 }

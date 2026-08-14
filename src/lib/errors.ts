@@ -5,18 +5,29 @@
 export function friendlyErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof Error) {
     const message = err.message;
+    // OpenAI-compatible SDK errors carry an HTTP status.
+    const status = (err as { status?: number }).status;
 
-    if (/credit balance is too low/i.test(message)) {
-      return "The AI question generator is out of credits. Add credits at console.anthropic.com, then try again.";
+    if (status === 401 || /invalid api key|no auth credentials/i.test(message)) {
+      return "The question generator's API key is missing or invalid. Check OPENROUTER_API_KEY.";
     }
-    if (/rate limit/i.test(message)) {
+    if (
+      status === 402 ||
+      /credit balance is too low|insufficient credits|requires more credits/i.test(message)
+    ) {
+      return "The AI question generator is out of credits. Top up your OpenRouter account, then try again.";
+    }
+    if (status === 429 || /rate limit/i.test(message)) {
       return "The AI question generator is temporarily rate-limited. Wait a minute and try again.";
     }
     if (/timeout|timed out/i.test(message)) {
       return "That took too long and timed out. Try again, or select fewer topics at once.";
     }
-    if (/overloaded/i.test(message)) {
-      return "The AI question generator is overloaded right now. Try again in a bit.";
+    if (status === 503 || /overloaded|no (available )?providers|temporarily unavailable/i.test(message)) {
+      return "The AI question generator is unavailable right now. Try again in a bit.";
+    }
+    if (/malformed JSON|empty response|no questions/i.test(message)) {
+      return "The question generator returned an unusable response. Try again — if it keeps happening, try a different model.";
     }
   }
 
