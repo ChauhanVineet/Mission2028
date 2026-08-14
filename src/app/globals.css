@@ -12,12 +12,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* No dark-mode variant: the UI is designed for light backgrounds only.
+   (A previous prefers-color-scheme override made input text render
+   near-white on white fields — effectively invisible — for anyone with
+   system dark mode on.) */
 
 body {
   background: var(--background);

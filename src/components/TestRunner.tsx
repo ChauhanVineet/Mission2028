@@ -216,7 +216,7 @@ export function TestRunner({
                 value={answers[current.id] ?? ""}
                 onChange={(e) => setAnswer(e.target.value === "" ? null : e.target.value)}
                 placeholder="Enter your numeric answer"
-                className="w-full max-w-xs rounded-xl border border-slate-300 px-4 py-2.5 text-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+                className="w-full max-w-xs rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
               />
             )}
 

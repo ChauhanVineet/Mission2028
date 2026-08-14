@@ -90,7 +90,7 @@ export default function LoginPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200"
               autoFocus
             />
           </div>

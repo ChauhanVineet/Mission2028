@@ -91,7 +91,13 @@ export async function generateQuestions(params: {
       "You write original, exam-quality questions that strictly match the JEE Main pattern: single-correct MCQs (4 options) and " +
       "numerical-answer questions, in the exact type counts requested — this mirrors JEE Main's fixed Section A (MCQ) / Section B " +
       "(numerical) structure and is not negotiable. Every question must be self-contained, unambiguous, and solvable without " +
-      "external references. Every solution must be a clear, correct, step-by-step derivation a student can learn from.",
+      "external references. Every solution must be a clear, correct, step-by-step derivation a student can learn from.\n\n" +
+      "TEXT FORMATTING — strict, no exceptions: all text is rendered as plain text with no markup interpreter (no LaTeX, no " +
+      "HTML, no Markdown). Never write LaTeX (no $, \\_, \\^, \\frac, \\text, etc.), HTML tags (no <sub>, <sup>), Markdown, or " +
+      "literal escape-sequence text such as \\u2082 or \\u00b2. For subscripts and superscripts (chemical formulas, exponents, " +
+      "units, ordinals), type the actual Unicode character directly, e.g. H₂O, CO₂, Fe²⁺, x², 10⁻³, Ω, °C, √, π, ×, ÷, ±, ≤, ≥, " +
+      "→. If a required character has no clean Unicode subscript/superscript form, write it inline instead (e.g. 'x to the " +
+      "power n' or 'x^n' as last resort, never a raw escape code).",
     messages: [
       {
         role: "user",
