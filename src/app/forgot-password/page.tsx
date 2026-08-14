@@ -134,17 +134,17 @@ export default function ForgotPasswordPage() {
                   htmlFor="code"
                   className="mb-1 block text-sm font-medium text-slate-700"
                 >
-                  6-digit code
+                  Verification code
                 </label>
                 <input
                   id="code"
                   type="text"
                   inputMode="numeric"
-                  maxLength={6}
+                  maxLength={12}
                   required
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-center text-lg tracking-[0.3em] focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-center text-lg tracking-widest focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   autoFocus
                 />
               </div>
