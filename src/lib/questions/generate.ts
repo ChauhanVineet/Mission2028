@@ -1,5 +1,5 @@
 import "server-only";
-import { createOpenRouterClient, OPENROUTER_MODEL } from "@/lib/openrouter/client";
+import { callWithRetry, createLlmClient } from "@/lib/llm/client";
 
 export type QuestionType = "mcq_single" | "numerical";
 export type Difficulty = "easy" | "medium" | "hard";
@@ -132,10 +132,11 @@ export async function generateQuestions(params: {
   );
   if (grandTotal === 0) return [];
 
-  const client = createOpenRouterClient();
+  const { client, provider } = createLlmClient();
 
-  const response = await client.chat.completions.create({
-    model: OPENROUTER_MODEL,
+  const response = await callWithRetry(() =>
+    client.chat.completions.create({
+    model: provider.model,
     max_tokens: 16000,
     messages: [
       {
@@ -175,7 +176,8 @@ export async function generateQuestions(params: {
         schema: QUESTIONS_SCHEMA,
       },
     },
-  });
+    }),
+  );
 
   const content = response.choices[0]?.message?.content;
   if (!content) {

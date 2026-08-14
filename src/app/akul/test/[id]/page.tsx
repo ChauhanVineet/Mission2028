@@ -26,6 +26,13 @@ type AttemptRow = {
   total_marks: number | null;
 };
 
+// Kept outside the component: reading the clock is inherently impure, and
+// this page is server-rendered per request anyway, so the check belongs in
+// a plain helper rather than inline in render.
+function isPastDeadline(deadline: string): boolean {
+  return new Date(deadline).getTime() < Date.now();
+}
+
 type TestQuestionRow = {
   order_index: number;
   questions: {
@@ -130,7 +137,7 @@ export default async function TakeTestPage({
   }
 
   // Not started yet.
-  const deadlinePassed = new Date(test.deadline).getTime() < Date.now();
+  const deadlinePassed = isPastDeadline(test.deadline);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">

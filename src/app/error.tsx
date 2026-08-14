@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 
 export default function Error({
@@ -9,6 +10,13 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Surface the real error in the browser console. The user-facing copy is
+  // deliberately vague, but without this a production crash leaves nothing
+  // to diagnose from (the digest maps to the server-side log entry).
+  useEffect(() => {
+    console.error("Unhandled error:", error);
+  }, [error]);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-indigo-50 via-purple-50 to-white p-6">
       <div className="w-full max-w-md animate-pop-in rounded-2xl bg-white p-8 text-center shadow-sm">

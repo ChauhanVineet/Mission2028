@@ -8,17 +8,21 @@ export function friendlyErrorMessage(err: unknown, fallback: string): string {
     // OpenAI-compatible SDK errors carry an HTTP status.
     const status = (err as { status?: number }).status;
 
-    if (status === 401 || /invalid api key|no auth credentials/i.test(message)) {
-      return "The question generator's API key is missing or invalid. Check OPENROUTER_API_KEY.";
+    if (
+      status === 401 ||
+      status === 403 ||
+      /invalid api key|no auth credentials|api key not valid|permission denied/i.test(message)
+    ) {
+      return "The question generator's API key is missing or invalid. Check the key in your environment.";
     }
     if (
       status === 402 ||
       /credit balance is too low|insufficient credits|requires more credits/i.test(message)
     ) {
-      return "The AI question generator is out of credits. Top up your OpenRouter account, then try again.";
+      return "The AI question generator is out of credits. Top up your provider account, then try again.";
     }
-    if (status === 429 || /rate limit/i.test(message)) {
-      return "The AI question generator is temporarily rate-limited. Wait a minute and try again.";
+    if (status === 429 || /rate limit|quota|resource_exhausted/i.test(message)) {
+      return "The AI question generator hit its rate limit or quota. Wait a minute and try again.";
     }
     if (/timeout|timed out/i.test(message)) {
       return "That took too long and timed out. Try again, or select fewer topics at once.";

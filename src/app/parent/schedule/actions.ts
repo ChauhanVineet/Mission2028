@@ -9,6 +9,7 @@ import {
   type DifficultyMix,
 } from "@/lib/questions/distribute";
 import { friendlyErrorMessage } from "@/lib/errors";
+import { mapWithConcurrency, resolveProvider } from "@/lib/llm/client";
 
 // JEE Main's fixed per-subject pattern: 25 questions (20 MCQ + 5 Numerical)
 // in a 60-minute block (the real exam's 180 minutes ÷ 3 subjects). Not
@@ -137,9 +138,9 @@ async function scheduleTestInner(input: {
     )
     .filter((activeTopics) => activeTopics.length > 0);
 
-  // One Claude call per subject (not per topic) — a subject can have 20-30
-  // topics, and firing that many parallel requests can blow through
-  // Anthropic's rate limits, turning a sub-minute generation into a
+  // One LLM call per subject (not per topic) — a subject can have 20-30
+  // topics, and firing that many parallel requests can blow through the
+  // provider's rate limits, turning a sub-minute generation into a
   // multi-minute hang from retries/backoff.
   let generatedBatches: {
     topic: TopicRow;
@@ -147,8 +148,15 @@ async function scheduleTestInner(input: {
   }[];
 
   try {
-    const perSubjectResults = await Promise.all(
-      activeTopicsBySubject.map(async (activeTopics) => {
+    // Cap how many subject requests are in flight. Gemini's free tier has
+    // low per-minute request limits, so firing all three subjects at once
+    // can trip a 429; OpenRouter allows the full fan-out.
+    const { maxConcurrency } = resolveProvider();
+
+    const perSubjectResults = await mapWithConcurrency(
+      activeTopicsBySubject,
+      maxConcurrency,
+      async (activeTopics) => {
         const subjectName = activeTopics[0].topic.subjects?.name ?? "Unknown";
         const subjectTotal = activeTopics.reduce((sum, { count }) => sum + count, 0);
         const questions = await generateQuestions({
@@ -163,7 +171,7 @@ async function scheduleTestInner(input: {
           typeCounts: allocateQuestionTypes(subjectTotal),
         });
         return { activeTopics, questions };
-      }),
+      },
     );
 
     generatedBatches = perSubjectResults.flatMap(({ activeTopics, questions }) =>
@@ -187,7 +195,7 @@ async function scheduleTestInner(input: {
       success: false,
       error: friendlyErrorMessage(
         err,
-        "Question generation failed. Check your OPENROUTER_API_KEY and try again.",
+        "Question generation failed. Check your LLM API key and try again.",
       ),
     };
   }

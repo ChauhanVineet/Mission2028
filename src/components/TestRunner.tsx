@@ -46,9 +46,9 @@ export function TestRunner({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | null>>({});
   const [marked, setMarked] = useState<Record<string, boolean>>({});
-  const [visited, setVisited] = useState<Record<string, boolean>>({
-    [questions[0]?.id]: true,
-  });
+  const [visited, setVisited] = useState<Record<string, boolean>>(() =>
+    questions[0]?.id ? { [questions[0].id]: true } : {},
+  );
   const [remainingSeconds, setRemainingSeconds] = useState(() =>
     Math.max(0, Math.round((deadlineMs - Date.now()) / 1000)),
   );
@@ -58,15 +58,28 @@ export function TestRunner({
   const [result, setResult] = useState<SubmitResult | null>(null);
 
   const timeSpent = useRef<Record<string, number>>({});
-  const questionEnteredAt = useRef<number>(Date.now());
+  // Set on mount rather than at render time — calling Date.now() during
+  // render is impure (it would be re-evaluated on every render even though
+  // only the first value is kept). 0 means "not started yet".
+  const questionEnteredAt = useRef<number>(0);
+  useEffect(() => {
+    questionEnteredAt.current = Date.now();
+  }, []);
 
   const current = questions[currentIndex];
 
   const recordTimeOnCurrent = useCallback(() => {
     if (!current) return;
-    const elapsed = Math.round((Date.now() - questionEnteredAt.current) / 1000);
+    const now = Date.now();
+    // Guard against the mount effect not having run yet, which would
+    // otherwise record a nonsensical elapsed time measured from epoch 0.
+    if (questionEnteredAt.current === 0) {
+      questionEnteredAt.current = now;
+      return;
+    }
+    const elapsed = Math.round((now - questionEnteredAt.current) / 1000);
     timeSpent.current[current.id] = (timeSpent.current[current.id] ?? 0) + elapsed;
-    questionEnteredAt.current = Date.now();
+    questionEnteredAt.current = now;
   }, [current]);
 
   const handleSubmit = useCallback(async () => {
@@ -95,6 +108,17 @@ export function TestRunner({
     }
   }, [answers, attemptId, questions, recordTimeOnCurrent, submitting]);
 
+  // Keep the latest handleSubmit in a ref so the countdown effect below
+  // doesn't depend on it. handleSubmit changes on every answer edit and
+  // every question change; if the interval depended on it, each keystroke
+  // or navigation would tear down and recreate the 1s timer — meaning a
+  // student typing (or clicking through questions) faster than once a
+  // second would freeze the clock and never auto-submit.
+  const handleSubmitRef = useRef(handleSubmit);
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit;
+  }, [handleSubmit]);
+
   // Countdown timer — auto-submits when it reaches zero.
   useEffect(() => {
     if (result) return;
@@ -103,11 +127,11 @@ export function TestRunner({
       setRemainingSeconds(remaining);
       if (remaining <= 0) {
         clearInterval(interval);
-        handleSubmit();
+        void handleSubmitRef.current();
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [deadlineMs, handleSubmit, result]);
+  }, [deadlineMs, result]);
 
   function goTo(index: number) {
     if (index < 0 || index >= questions.length) return;
@@ -143,7 +167,31 @@ export function TestRunner({
     return <ResultSummary testTitle={testTitle} result={result} />;
   }
 
-  if (!current) return null;
+  // A test with no questions would otherwise render a blank screen with no
+  // way out. Shouldn't happen (scheduling refuses to create empty tests),
+  // but old data or a partial failure could still produce one.
+  if (!current) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-indigo-50 via-purple-50 to-white p-6">
+        <div className="w-full max-w-md animate-pop-in rounded-2xl bg-white p-8 text-center shadow-sm">
+          <div className="mb-3 text-4xl">📭</div>
+          <h1 className="mb-2 text-lg font-semibold text-slate-900">
+            This test has no questions
+          </h1>
+          <p className="mb-6 text-sm text-slate-500">
+            Something went wrong when it was created. Ask your parents to
+            schedule it again.
+          </p>
+          <button
+            onClick={() => router.push("/akul")}
+            className="rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:scale-105 active:scale-95"
+          >
+            Back to dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const minutes = Math.floor(remainingSeconds / 60);
   const seconds = remainingSeconds % 60;

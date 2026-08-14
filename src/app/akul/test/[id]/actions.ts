@@ -49,7 +49,7 @@ async function startAttemptInner(
 
   const { data: test } = await supabase
     .from("tests")
-    .select("id, status")
+    .select("id, status, deadline")
     .eq("id", testId)
     .single();
 
@@ -66,8 +66,17 @@ async function startAttemptInner(
     .limit(1)
     .maybeSingle();
 
+  // Resume an in-progress attempt regardless of the deadline — once started,
+  // the timer governs, and it would be unfair to lock someone out mid-test.
   if (existing && !existing.submitted_at) {
     return { success: true, attemptId: existing.id, startedAt: existing.started_at };
+  }
+
+  // Starting fresh, though, must respect the deadline. The page hides the
+  // button after it passes, but a tab left open overnight would still have
+  // a live button without this check.
+  if (test.deadline && new Date(test.deadline).getTime() < Date.now()) {
+    return { success: false, error: "The deadline for this test has passed." };
   }
 
   const { data: attempt, error } = await supabase
@@ -197,7 +206,16 @@ async function submitAttemptInner(
     return { success: false, error: "Failed to save answers." };
   }
 
-  const totalMarks = maxMarksForCount(answers.length);
+  // Total marks come from how many questions the test actually has, not
+  // from how many answers the client happened to send — otherwise a short
+  // or truncated payload would quietly shrink the denominator and inflate
+  // the reported percentage.
+  const { count: testQuestionCount } = await supabase
+    .from("test_questions")
+    .select("id", { count: "exact", head: true })
+    .eq("test_id", attempt.test_id);
+
+  const totalMarks = maxMarksForCount(testQuestionCount ?? answers.length);
 
   const { error: updateAttemptError } = await supabase
     .from("test_attempts")
