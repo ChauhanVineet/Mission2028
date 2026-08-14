@@ -6,6 +6,7 @@ import {
   type ScheduledQuestion,
 } from "@/app/parent/schedule/actions";
 import type { DifficultyMix } from "@/lib/questions/distribute";
+import { Spinner } from "@/components/Spinner";
 
 type Topic = {
   id: string;
@@ -302,8 +303,9 @@ export function TestScheduler({ subjects }: { subjects: Subject[] }) {
             <button
               disabled={totalSelected === 0 || scheduling}
               onClick={handleSchedule}
-              className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
+              {scheduling && <Spinner />}
               {scheduling ? "Generating with Claude…" : "Schedule test"}
             </button>
             {scheduling && (

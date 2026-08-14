@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_EMAILS, type Role } from "@/lib/roles";
+import { Spinner } from "@/components/Spinner";
 
 function maskEmail(email: string) {
   const [name, domain] = email.split("@");
@@ -108,20 +109,23 @@ export default function ForgotPasswordPage() {
               <button
                 onClick={() => sendCode("parent")}
                 disabled={loading}
-                className="rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 disabled:opacity-60"
+                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 disabled:opacity-60"
               >
                 Parent
               </button>
               <button
                 onClick={() => sendCode("akul")}
                 disabled={loading}
-                className="rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 disabled:opacity-60"
+                className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 disabled:opacity-60"
               >
                 Akul
               </button>
             </div>
             {loading && (
-              <p className="text-center text-xs text-slate-400">Sending code…</p>
+              <p className="flex items-center justify-center gap-2 text-center text-xs text-slate-400">
+                <Spinner className="h-3.5 w-3.5" />
+                Sending code…
+              </p>
             )}
           </>
         ) : (
@@ -188,8 +192,9 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
               >
+                {loading && <Spinner />}
                 {loading ? "Resetting…" : "Reset password"}
               </button>
 

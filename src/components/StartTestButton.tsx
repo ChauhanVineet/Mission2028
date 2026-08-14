@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { startAttempt } from "@/app/akul/test/[id]/actions";
+import { Spinner } from "@/components/Spinner";
 
 export function StartTestButton({ testId }: { testId: string }) {
   const router = useRouter();
@@ -24,8 +25,9 @@ export function StartTestButton({ testId }: { testId: string }) {
     <button
       onClick={handleStart}
       disabled={loading}
-      className="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+      className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
     >
+      {loading && <Spinner />}
       {loading ? "Starting…" : "Start test"}
     </button>
   );

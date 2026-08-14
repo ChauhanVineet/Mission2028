@@ -6,6 +6,7 @@ import {
   submitAttempt,
   type SubmitAnswer,
 } from "@/app/akul/test/[id]/actions";
+import { Spinner } from "@/components/Spinner";
 
 type RunnerQuestion = {
   id: string;
@@ -321,6 +322,13 @@ export function TestRunner({
           onConfirm={handleSubmit}
         />
       )}
+
+      {submitting && !showSubmitConfirm && (
+        <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black/40">
+          <Spinner className="h-8 w-8 text-white" />
+          <p className="text-sm font-medium text-white">Submitting your test…</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -368,8 +376,9 @@ function SubmitConfirmDialog({
           <button
             onClick={onConfirm}
             disabled={submitting}
-            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-60"
+            className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-60"
           >
+            {submitting && <Spinner className="h-4 w-4" />}
             {submitting ? "Submitting…" : "Submit"}
           </button>
         </div>

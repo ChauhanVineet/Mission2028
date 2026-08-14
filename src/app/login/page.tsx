@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_EMAILS, type Role } from "@/lib/roles";
+import { Spinner } from "@/components/Spinner";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -94,9 +95,10 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {loading && <Spinner />}
+            {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
