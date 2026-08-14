@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_EMAILS, type Role } from "@/lib/roles";
 
@@ -98,6 +99,13 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
+
+        <Link
+          href="/forgot-password"
+          className="mt-4 block text-center text-xs font-medium text-indigo-600 hover:text-indigo-700"
+        >
+          Forgot password?
+        </Link>
       </div>
     </div>
   );

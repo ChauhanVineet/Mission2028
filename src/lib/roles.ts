@@ -1,8 +1,9 @@
 export type Role = "parent" | "akul";
 
-// Supabase Auth needs an email under the hood, but the UI only ever asks
-// for a role + password — these fixed addresses are never shown to users.
+// The login UI only ever asks for a role + password, but Supabase Auth
+// needs a real email under the hood — these are the accounts' actual
+// registered emails, also used to deliver forgot-password OTP codes.
 export const ROLE_EMAILS: Record<Role, string> = {
-  parent: "parent@mission2028.internal",
-  akul: "akul@mission2028.internal",
+  parent: "mailforvineet@gmail.com",
+  akul: "shalini.gzb@gmail.com",
 };
