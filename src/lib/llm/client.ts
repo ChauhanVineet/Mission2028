@@ -21,11 +21,48 @@ export function getModel(): string {
 }
 
 /**
- * Max generation requests in flight at once. Scheduling a test fires one
- * request per subject (at most 3), which is comfortably within Anthropic's
- * limits — measured at ~90s wall time for all three in parallel.
+ * Max generation requests in flight at once, across the whole process.
+ * Scheduling a full test fires 15 requests (3 subjects x 5 chunks), so
+ * this is enforced by a shared semaphore rather than per-subject:
+ * otherwise three subjects each running their own chunk pool would
+ * multiply into a burst of unknown size.
+ *
+ * 15 is deliberately high enough to run a whole test in one wave. Measured
+ * at 12 concurrent requests: no rate limiting, no failures, and per-request
+ * speed unchanged from running alone — so the wall time of a full test is
+ * one chunk (~48s) rather than the sum of them. Lower it via
+ * LLM_MAX_CONCURRENCY if Anthropic ever starts returning 429s.
  */
-export const MAX_CONCURRENCY = Number(process.env.LLM_MAX_CONCURRENCY) || 3;
+export const MAX_CONCURRENCY = Number(process.env.LLM_MAX_CONCURRENCY) || 15;
+
+let inFlight = 0;
+const waiting: (() => void)[] = [];
+
+/**
+ * Runs `fn` while holding one of MAX_CONCURRENCY slots, queueing if all
+ * are taken. Every LLM call in the app goes through here, so the cap holds
+ * no matter how many callers there are or how they're nested.
+ */
+export async function withLlmSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (inFlight >= MAX_CONCURRENCY) {
+    // Wait to be handed a slot directly by whoever finishes next.
+    await new Promise<void>((resolve) => waiting.push(resolve));
+  } else {
+    inFlight++;
+  }
+
+  try {
+    return await fn();
+  } finally {
+    // Pass the slot straight to the next waiter instead of releasing it and
+    // letting them re-acquire; releasing first would briefly leave the count
+    // below the true number of callers about to run, allowing more than
+    // MAX_CONCURRENCY requests in flight.
+    const next = waiting.shift();
+    if (next) next();
+    else inFlight--;
+  }
+}
 
 export function createLlmClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -37,11 +74,11 @@ export function createLlmClient(): Anthropic {
 
   // Fail fast rather than relying on the SDK's built-in retries, whose
   // defaults (10-minute timeout, 2 retries) can silently stretch one stuck
-  // request past 30 minutes. A full 25-question subject batch measures
-  // ~76-95s, so 110s leaves headroom. Retries that are actually worth doing
-  // are handled in callWithRetry so the time budget stays bounded and below
-  // the route's maxDuration.
-  return new Anthropic({ apiKey, timeout: 110_000, maxRetries: 0 });
+  // request past 30 minutes. Requests are chunked to 5 questions, which
+  // measures ~48s, so 90s absorbs normal variance while still catching a
+  // genuinely stuck connection well inside the route's 120s maxDuration.
+  // Retries worth doing are handled in callWithRetry, under a deadline.
+  return new Anthropic({ apiKey, timeout: 90_000, maxRetries: 0 });
 }
 
 function isTransient(err: unknown): boolean {
@@ -56,11 +93,30 @@ function isTransient(err: unknown): boolean {
  * Runs an LLM call, retrying only on transient failures (rate limits,
  * overload, upstream 5xx). A blip shouldn't fail a whole test generation,
  * but retries are bounded so a real outage surfaces quickly instead of
- * hanging — and so total time stays under the route's maxDuration.
+ * hanging.
+ *
+ * `deadlineAt` (epoch ms) is the hard stop: retrying is skipped when there
+ * isn't time left for another attempt. Without it, retry counts multiply
+ * with the per-request timeout — three 60s attempts is 180s, which would
+ * outlast the route's maxDuration and get the whole function killed
+ * mid-flight, leaving the browser spinning with no error to show.
  */
 export async function callWithRetry<T>(
   fn: () => Promise<T>,
-  { retries = 2, baseDelayMs = 3000 }: { retries?: number; baseDelayMs?: number } = {},
+  {
+    retries = 2,
+    baseDelayMs = 3000,
+    deadlineAt,
+    // Roughly how long a fresh attempt needs. A failure that arrives
+    // quickly (a 429, say) leaves room to retry; one that burns the full
+    // client timeout does not, and correctly gives up instead.
+    attemptBudgetMs = 50_000,
+  }: {
+    retries?: number;
+    baseDelayMs?: number;
+    deadlineAt?: number;
+    attemptBudgetMs?: number;
+  } = {},
 ): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -69,7 +125,12 @@ export async function callWithRetry<T>(
     } catch (err) {
       lastErr = err;
       if (!isTransient(err) || attempt === retries) throw err;
-      await new Promise((r) => setTimeout(r, baseDelayMs * (attempt + 1)));
+
+      const delay = baseDelayMs * (attempt + 1);
+      if (deadlineAt !== undefined && Date.now() + delay + attemptBudgetMs > deadlineAt) {
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, delay));
     }
   }
   throw lastErr;

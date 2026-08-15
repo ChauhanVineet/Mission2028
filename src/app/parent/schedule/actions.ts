@@ -171,20 +171,12 @@ async function scheduleTestInner(input: {
       },
     );
 
+    // generateQuestions guarantees every topicIndex is a valid index into
+    // the topic list it was given, so a plain match is enough here.
     generatedBatches = perSubjectResults.flatMap(({ activeTopics, questions }) =>
       activeTopics.map(({ topic }, topicIndex) => ({
         topic,
-        // Anything tagged with an out-of-range topic_index would otherwise be
-        // dropped silently; fold it into the first topic of the subject so
-        // generated work is never thrown away.
-        questions: questions.filter((q) =>
-          topicIndex === 0
-            ? q.topicIndex === 0 ||
-              q.topicIndex == null ||
-              q.topicIndex < 0 ||
-              q.topicIndex >= activeTopics.length
-            : q.topicIndex === topicIndex,
-        ),
+        questions: questions.filter((q) => q.topicIndex === topicIndex),
       })),
     );
   } catch (err) {
