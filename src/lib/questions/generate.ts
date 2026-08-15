@@ -1,5 +1,5 @@
 import "server-only";
-import { callWithRetry, createLlmClient } from "@/lib/llm/client";
+import { callWithRetry, createLlmClient, getModel } from "@/lib/llm/client";
 
 export type QuestionType = "mcq_single" | "numerical";
 export type Difficulty = "easy" | "medium" | "hard";
@@ -132,54 +132,51 @@ export async function generateQuestions(params: {
   );
   if (grandTotal === 0) return [];
 
-  const { client, provider } = createLlmClient();
+  const client = createLlmClient();
 
   const response = await callWithRetry(() =>
-    client.chat.completions.create({
-    model: provider.model,
-    max_tokens: 16000,
-    messages: [
-      {
-        role: "system",
-        content:
-          "You are an expert JEE (Joint Entrance Examination) question setter for Indian Class 11-12 students preparing for JEE Main. " +
-          "You write original, exam-quality questions that strictly match the JEE Main pattern: single-correct MCQs (4 options) and " +
-          "numerical-answer questions, in the exact type counts requested — this mirrors JEE Main's fixed Section A (MCQ) / Section B " +
-          "(numerical) structure and is not negotiable. Every question must be self-contained, unambiguous, and solvable without " +
-          "external references. Every solution must be a clear, correct, step-by-step derivation a student can learn from.\n\n" +
-          "TEXT FORMATTING — strict, no exceptions: all text is rendered as plain text with no markup interpreter (no LaTeX, no " +
-          "HTML, no Markdown). Never write LaTeX (no $, \\_, \\^, \\frac, \\text, etc.), HTML tags (no <sub>, <sup>), Markdown, or " +
-          "literal escape-sequence text such as \\u2082 or \\u00b2. For subscripts and superscripts (chemical formulas, exponents, " +
-          "units, ordinals), type the actual Unicode character directly, e.g. H₂O, CO₂, Fe²⁺, x², 10⁻³, Ω, °C, √, π, ×, ÷, ±, ≤, ≥, " +
-          "→. If a required character has no clean Unicode subscript/superscript form, write it inline instead (e.g. 'x to the " +
-          "power n' or 'x^n' as last resort, never a raw escape code).",
+    client.messages.create({
+      model: getModel(),
+      max_tokens: 16000,
+      system:
+        "You are an expert JEE (Joint Entrance Examination) question setter for Indian Class 11-12 students preparing for JEE Main. " +
+        "You write original, exam-quality questions that strictly match the JEE Main pattern: single-correct MCQs (4 options) and " +
+        "numerical-answer questions, in the exact type counts requested — this mirrors JEE Main's fixed Section A (MCQ) / Section B " +
+        "(numerical) structure and is not negotiable. Every question must be self-contained, unambiguous, and solvable without " +
+        "external references. Every solution must be a clear, correct, step-by-step derivation a student can learn from.\n\n" +
+        "For mcq_single, correct_answer MUST be the exact full text of the correct option, never a letter label like 'B'.\n\n" +
+        "TEXT FORMATTING — strict, no exceptions: all text is rendered as plain text with no markup interpreter (no LaTeX, no " +
+        "HTML, no Markdown). Never write LaTeX (no $, \\_, \\^, \\frac, \\text, etc.), HTML tags (no <sub>, <sup>), Markdown, or " +
+        "literal escape-sequence text such as \\u2082 or \\u00b2. For subscripts and superscripts (chemical formulas, exponents, " +
+        "units, ordinals), type the actual Unicode character directly, e.g. H₂O, CO₂, Fe²⁺, x², 10⁻³, Ω, °C, √, π, ×, ÷, ±, ≤, ≥, " +
+        "→. If a required character has no clean Unicode subscript/superscript form, write it inline instead (e.g. 'x to the " +
+        "power n' or 'x^n' as last resort, never a raw escape code).",
+      messages: [
+        {
+          role: "user",
+          content:
+            `Generate exactly ${grandTotal} JEE Main-style questions total for ${subjectName}, covering these topics ` +
+            `(follow every count exactly — this is a strict JEE Main format requirement):\n\n` +
+            describeTopics(topics) +
+            `\n\nQuestion type breakdown across the ENTIRE set (follow this exactly — this is a strict JEE Main format ` +
+            `requirement): ${typeCounts.mcq_single} mcq_single, ${typeCounts.numerical} numerical, distributed across ` +
+            `the topics above however makes sense (a single topic can be all one type). ` +
+            `Tag every question with the topic_index it belongs to, exactly matching the numbers above. ` +
+            `Distribute difficulty levels across both question types as makes sense pedagogically. ` +
+            `Do not repeat the same question idea twice, including across different topics.`,
+        },
+      ],
+      output_config: {
+        format: {
+          type: "json_schema",
+          schema: QUESTIONS_SCHEMA,
+        },
       },
-      {
-        role: "user",
-        content:
-          `Generate exactly ${grandTotal} JEE Main-style questions total for ${subjectName}, covering these topics ` +
-          `(follow every count exactly — this is a strict JEE Main format requirement):\n\n` +
-          describeTopics(topics) +
-          `\n\nQuestion type breakdown across the ENTIRE set (follow this exactly — this is a strict JEE Main format ` +
-          `requirement): ${typeCounts.mcq_single} mcq_single, ${typeCounts.numerical} numerical, distributed across ` +
-          `the topics above however makes sense (a single topic can be all one type). ` +
-          `Tag every question with the topic_index it belongs to, exactly matching the numbers above. ` +
-          `Distribute difficulty levels across both question types as makes sense pedagogically. ` +
-          `Do not repeat the same question idea twice, including across different topics.`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "jee_questions",
-        strict: true,
-        schema: QUESTIONS_SCHEMA,
-      },
-    },
     }),
   );
 
-  const content = response.choices[0]?.message?.content;
+  const textBlock = response.content.find((block) => block.type === "text");
+  const content = textBlock && textBlock.type === "text" ? textBlock.text : null;
   if (!content) {
     throw new Error("The question generator returned an empty response.");
   }

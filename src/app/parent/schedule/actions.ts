@@ -9,7 +9,7 @@ import {
   type DifficultyMix,
 } from "@/lib/questions/distribute";
 import { friendlyErrorMessage } from "@/lib/errors";
-import { mapWithConcurrency, resolveProvider } from "@/lib/llm/client";
+import { mapWithConcurrency, MAX_CONCURRENCY } from "@/lib/llm/client";
 
 // JEE Main's fixed per-subject pattern: 25 questions (20 MCQ + 5 Numerical)
 // in a 60-minute block (the real exam's 180 minutes ÷ 3 subjects). Not
@@ -148,14 +148,11 @@ async function scheduleTestInner(input: {
   }[];
 
   try {
-    // Cap how many subject requests are in flight. Gemini's free tier has
-    // low per-minute request limits, so firing all three subjects at once
-    // can trip a 429; OpenRouter allows the full fan-out.
-    const { maxConcurrency } = resolveProvider();
-
+    // Cap how many subject requests are in flight at once (at most 3, one
+    // per subject) so a multi-subject test can't trip a rate limit.
     const perSubjectResults = await mapWithConcurrency(
       activeTopicsBySubject,
-      maxConcurrency,
+      MAX_CONCURRENCY,
       async (activeTopics) => {
         const subjectName = activeTopics[0].topic.subjects?.name ?? "Unknown";
         const subjectTotal = activeTopics.reduce((sum, { count }) => sum + count, 0);

@@ -1,124 +1,66 @@
 import "server-only";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-// The app talks to whichever LLM provider has a key configured. Both are
-// reached through the OpenAI SDK: OpenRouter and Google both expose
-// OpenAI-compatible endpoints, so only baseURL/model/limits differ.
-//
-// Precedence: GEMINI_API_KEY wins if both are set. Force one explicitly
-// with LLM_PROVIDER=gemini | openrouter.
+// Question generation talks to Anthropic directly. This project briefly
+// routed through OpenRouter and Google Gemini while the Anthropic account
+// was out of credits; both were removed once credits were restored, since
+// a single well-understood provider is easier to reason about than a
+// fallback chain — and the alternatives were materially worse for this
+// use case (weaker models returned option letters instead of answer text
+// and wrapped their JSON in prose, and Gemini's free tier returned 503 on
+// roughly half of requests).
 
-export type ProviderName = "gemini" | "openrouter";
+// Overridable without a code change via ANTHROPIC_MODEL. Sonnet is the
+// default for cost: it's meaningfully cheaper than Opus per token while
+// still strong enough for JEE-level physics/chemistry/maths reasoning.
+// Switch to claude-opus-5 if question quality ever looks thin.
+const DEFAULT_MODEL = "claude-sonnet-5";
 
-export type ProviderConfig = {
-  name: ProviderName;
-  model: string;
-  /**
-   * Max requests we're willing to have in flight at once. Gemini's free
-   * tier has low per-minute request limits, and scheduling a 3-subject
-   * test fires one request per subject — enough to trip a 429 if
-   * unthrottled. OpenRouter is far more permissive.
-   */
-  maxConcurrency: number;
-};
-
-const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/";
-const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-
-// Default Gemini model. Must be free-tier eligible (gemini-3.1-pro-preview
-// is NOT) and support json_schema structured outputs. gemini-2.5-pro is
-// confirmed on both counts and is the strongest reasoning model available
-// on the free tier — reasoning quality matters most here, since a wrong
-// worked solution actively teaches the wrong thing.
-// Other free-tier-eligible options: gemini-3.7-flash, gemini-3.6-flash,
-// gemini-3.5-flash, gemini-2.5-flash (faster, lighter on quota).
-const DEFAULT_GEMINI_MODEL = "gemini-2.5-pro";
-const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-5";
-
-export function resolveProvider(): ProviderConfig {
-  const forced = process.env.LLM_PROVIDER?.toLowerCase();
-  const hasGemini = !!process.env.GEMINI_API_KEY;
-  const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
-
-  if (forced && forced !== "gemini" && forced !== "openrouter") {
-    throw new Error(
-      `LLM_PROVIDER must be "gemini" or "openrouter" (got "${forced}").`,
-    );
-  }
-
-  const useGemini = forced === "gemini" || (forced !== "openrouter" && hasGemini);
-
-  if (useGemini) {
-    if (!hasGemini) {
-      throw new Error(
-        "GEMINI_API_KEY is not set. Add it to your environment to generate questions.",
-      );
-    }
-    return {
-      name: "gemini",
-      model: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
-      maxConcurrency: Number(process.env.LLM_MAX_CONCURRENCY) || 1,
-    };
-  }
-
-  if (!hasOpenRouter) {
-    throw new Error(
-      "No LLM key is set. Add GEMINI_API_KEY or OPENROUTER_API_KEY to your environment to generate questions.",
-    );
-  }
-  return {
-    name: "openrouter",
-    model: process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL,
-    maxConcurrency: Number(process.env.LLM_MAX_CONCURRENCY) || 3,
-  };
-}
-
-export function createLlmClient(): { client: OpenAI; provider: ProviderConfig } {
-  const provider = resolveProvider();
-
-  // Fail fast rather than relying on the SDK's built-in retries, which can
-  // silently stretch a stuck request across several minutes. Retries that
-  // *are* worth doing (429s) are handled explicitly in callWithRetry so we
-  // stay in control of the total time budget.
-  const common = { timeout: 110_000, maxRetries: 0 };
-
-  const client =
-    provider.name === "gemini"
-      ? new OpenAI({
-          ...common,
-          apiKey: process.env.GEMINI_API_KEY,
-          baseURL: GEMINI_BASE_URL,
-        })
-      : new OpenAI({
-          ...common,
-          apiKey: process.env.OPENROUTER_API_KEY,
-          baseURL: OPENROUTER_BASE_URL,
-          defaultHeaders: {
-            "HTTP-Referer": "https://mission2028-chauhanvineet1.vercel.app",
-            "X-Title": "Mission2028",
-          },
-        });
-
-  return { client, provider };
-}
-
-function isRateLimited(err: unknown): boolean {
-  const e = err as { status?: number; message?: string };
-  // Match HTTP status first — Gemini's compat layer returns both the newer
-  // string-code envelope and legacy RESOURCE_EXHAUSTED bodies.
-  if (e?.status === 429) return true;
-  return /rate limit|quota|resource_exhausted/i.test(e?.message ?? "");
+export function getModel(): string {
+  return process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
 }
 
 /**
- * Runs an LLM call, retrying only on rate limiting. Free-tier Gemini keys
- * have low per-minute limits, and a transient 429 shouldn't fail a whole
- * test generation — but retries are bounded so a sustained outage still
- * surfaces quickly instead of hanging.
+ * Max generation requests in flight at once. Scheduling a test fires one
+ * request per subject (at most 3), which is comfortably within Anthropic's
+ * limits — measured at ~90s wall time for all three in parallel.
+ */
+export const MAX_CONCURRENCY = Number(process.env.LLM_MAX_CONCURRENCY) || 3;
+
+export function createLlmClient(): Anthropic {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "ANTHROPIC_API_KEY is not set. Add it to your environment to generate questions.",
+    );
+  }
+
+  // Fail fast rather than relying on the SDK's built-in retries, whose
+  // defaults (10-minute timeout, 2 retries) can silently stretch one stuck
+  // request past 30 minutes. A full 25-question subject batch measures
+  // ~76-95s, so 110s leaves headroom. Retries that are actually worth doing
+  // are handled in callWithRetry so the time budget stays bounded and below
+  // the route's maxDuration.
+  return new Anthropic({ apiKey, timeout: 110_000, maxRetries: 0 });
+}
+
+function isTransient(err: unknown): boolean {
+  const e = err as { status?: number; message?: string };
+  // 429 rate limited, 529 Anthropic-specific "overloaded", 5xx upstream.
+  if (e?.status === 429 || e?.status === 529) return true;
+  if (typeof e?.status === "number" && e.status >= 500) return true;
+  return /rate limit|overloaded|timeout|timed out/i.test(e?.message ?? "");
+}
+
+/**
+ * Runs an LLM call, retrying only on transient failures (rate limits,
+ * overload, upstream 5xx). A blip shouldn't fail a whole test generation,
+ * but retries are bounded so a real outage surfaces quickly instead of
+ * hanging — and so total time stays under the route's maxDuration.
  */
 export async function callWithRetry<T>(
   fn: () => Promise<T>,
-  { retries = 2, baseDelayMs = 4000 }: { retries?: number; baseDelayMs?: number } = {},
+  { retries = 2, baseDelayMs = 3000 }: { retries?: number; baseDelayMs?: number } = {},
 ): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -126,7 +68,7 @@ export async function callWithRetry<T>(
       return await fn();
     } catch (err) {
       lastErr = err;
-      if (!isRateLimited(err) || attempt === retries) throw err;
+      if (!isTransient(err) || attempt === retries) throw err;
       await new Promise((r) => setTimeout(r, baseDelayMs * (attempt + 1)));
     }
   }
@@ -134,9 +76,8 @@ export async function callWithRetry<T>(
 }
 
 /**
- * Runs tasks with a cap on how many are in flight at once. Used so a
- * multi-subject test doesn't fire every request simultaneously and trip a
- * provider's per-minute request limit.
+ * Runs tasks with a cap on how many are in flight at once, so a
+ * multi-subject test doesn't fire every request simultaneously.
  */
 export async function mapWithConcurrency<T, R>(
   items: T[],
